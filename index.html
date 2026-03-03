@@ -3,18 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏮 AI 智慧燈謎 - 最終穩定版</title>
+    <title>🏮 AI 智慧燈謎 - 最終相容版</title>
     <style>
         :root { --red: #d32f2f; --gold: #ffd700; --dark: #0a0a0a; }
         body { background: var(--dark); color: #fff; font-family: sans-serif; margin: 0; text-align: center; }
         header { padding: 30px 10px; }
-        .status-msg { font-size: 0.9rem; color: var(--gold); margin-bottom: 10px; padding: 0 20px; word-break: break-all; }
+        .status-msg { font-size: 0.9rem; color: var(--gold); margin-bottom: 10px; padding: 0 20px; }
         .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 10px; max-width: 800px; margin: auto; }
         .lantern {
             background: radial-gradient(circle, #ff4d4d, var(--red)); aspect-ratio: 1/1.2;
             border: 2px solid var(--gold); border-radius: 50% 50% 45% 45%; cursor: pointer;
-            display: flex; align-items: center; justify-content: center; padding: 8px;
-            font-size: 0.9rem; font-weight: bold; transition: 0.3s; color: white;
+            display: flex; align-items: center; justify-content: center; padding: 10px;
+            font-size: 0.95rem; font-weight: bold; transition: 0.3s; color: white;
             box-shadow: 0 5px 15px rgba(255,0,0,0.3);
         }
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; justify-content: center; align-items: center; }
@@ -36,7 +36,7 @@
 <div class="modal" id="modal">
     <div class="card">
         <h2 id="modal-q">題目</h2>
-        <input type="text" id="ans-input" placeholder="謎底是...">
+        <input type="text" id="ans-input" placeholder="答案是...">
         <div id="ai-feedback" style="margin: 10px 0; font-weight: bold; min-height: 1.5em;"></div>
         <button style="background:var(--red); color:white;" onclick="verifyAnswer()">判定</button>
         <button style="background:#666; color:white;" onclick="closeModal()">關閉</button>
@@ -44,54 +44,64 @@
 </div>
 
 <script>
-    const SECRET_KEY = "AIzaSyCL65TG8WRphIVwSnhr-Kbszzm2vV0WMXU"; 
     let riddles = [];
     let currentIdx = null;
 
-    // 💡 嘗試使用最通用的 -latest 路徑
-    const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent";
+    // 💡 定義多種可能的 API 組合，自動尋找能用的
+    const TRY_CONFIGS = [
+        { ver: "v1beta", model: "gemini-1.5-flash" },
+        { ver: "v1", model: "gemini-pro" },
+        { ver: "v1beta", model: "gemini-pro" }
+    ];
 
     function getApiKey() {
-        const inputKey = document.getElementById('api-key').value.trim();
-        return (SECRET_KEY && !SECRET_KEY.startsWith("__")) ? SECRET_KEY : inputKey;
+        return document.getElementById('api-key').value.trim();
     }
 
     async function callAI(text) {
         const key = getApiKey();
         if(!key) return null;
 
-        try {
-            const response = await fetch(`${API_URL}?key=${key}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: text }] }]
-                })
-            });
+        for (let config of TRY_CONFIGS) {
+            const url = `https://generativelanguage.googleapis.com/${config.ver}/models/${config.model}:generateContent?key=${key}`;
+            try {
+                const response = await fetch(url, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: text }] }] })
+                });
 
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error ? data.error.message : "API 錯誤");
-            return data.candidates[0].content.parts[0].text;
-        } catch (e) {
-            document.getElementById('status').innerText = "❌ 報錯: " + e.message;
-            return null;
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log(`✅ 成功使用組合: ${config.ver} / ${config.model}`);
+                    return data.candidates[0].content.parts[0].text;
+                }
+                console.warn(`❌ 失敗組合: ${config.ver} / ${config.model} (HTTP ${response.status})`);
+            } catch (e) {
+                console.error(`連線失敗: ${config.model}`);
+            }
         }
+        return null;
     }
 
     async function initApp() {
         const status = document.getElementById('status');
-        status.innerText = "⏳ AI 出題中...";
+        status.innerText = "⏳ AI 正在嘗試多種連線路徑...";
         
-        const prompt = "請生成 12 個中文燈謎 JSON: [{\"q\":\"題\",\"a\":\"答\",\"h\":\"提示\"}]。不要解釋文字。";
+        const prompt = "請提供12個燈謎 JSON: [{\"q\":\"題\",\"a\":\"答\",\"h\":\"提示\"}]。不要解釋文字。";
         const result = await callAI(prompt);
         
         if(result) {
             try {
                 const cleanJson = result.replace(/```json/g, "").replace(/```/g, "").trim();
                 riddles = JSON.parse(cleanJson);
-                status.innerText = "✨ 載入成功！";
+                status.innerText = "✨ 燈謎載入成功！";
                 renderGrid();
-            } catch(e) { status.innerText = "❌ 解析失敗"; }
+            } catch(e) { 
+                status.innerText = "❌ 解析失敗，請再按一次 Enter"; 
+            }
+        } else {
+            status.innerText = "❌ 偵測不到可用模型。請檢查 API Key 是否啟用且無過期。";
         }
     }
 
@@ -106,6 +116,7 @@
                 currentIdx = i;
                 document.getElementById('modal-q').innerText = r.q;
                 document.getElementById('ai-feedback').innerText = "";
+                document.getElementById('ans-input').value = "";
                 document.getElementById('modal').style.display = 'flex';
             };
             container.appendChild(div);
@@ -115,15 +126,14 @@
     async function verifyAnswer() {
         const userAns = document.getElementById('ans-input').value;
         const feedback = document.getElementById('ai-feedback');
-        feedback.innerText = "🔍 判定中...";
-        const prompt = `題目：${riddles[currentIdx].q}，正確答案：${riddles[currentIdx].a}。回答：${userAns}。對了回CORRECT加稱讚，錯了幽默吐槽。`;
+        feedback.innerText = "🔍 AI 評判中...";
+        const prompt = `題目：${riddles[currentIdx].q}，答案：${riddles[currentIdx].a}。使用者回答：${userAns}。答對回 CORRECT 加上誇獎，答錯回吐槽。`;
         const result = await callAI(prompt);
-        feedback.innerText = result ? result.replace("CORRECT", "🥳") : "再試試！";
+        feedback.innerText = result ? result.replace("CORRECT", "🥳") : "😅 沒反應，再試一次！";
     }
 
     function closeModal() { document.getElementById('modal').style.display = 'none'; }
     document.getElementById('api-key').addEventListener('keypress', e => { if(e.key === 'Enter') initApp(); });
-    window.onload = () => { if(getApiKey()) initApp(); };
 </script>
 </body>
 </html>

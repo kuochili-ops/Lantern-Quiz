@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏮 2026 AI 智慧燈謎矩陣 🏮</title>
+    <title>🏮 AI 智慧燈謎 - 互動升級版</title>
     <style>
         :root { --red: #e63946; --gold: #ffb703; --dark: #0d1117; }
         body { 
@@ -15,7 +15,6 @@
         h1 { color: var(--gold); font-size: 2.5rem; text-shadow: 0 0 15px rgba(255, 183, 3, 0.4); }
         .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 25px; padding: 20px; max-width: 900px; margin: auto; }
         
-        /* 燈籠樣式 */
         .lantern { 
             background: radial-gradient(circle at 50% 40%, #ff4d4d, var(--red)); 
             aspect-ratio: 1/1.2; border: 3px solid var(--gold); border-radius: 45% 45% 35% 35%;
@@ -25,75 +24,71 @@
         }
         @keyframes sway { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
 
-        /* 彈窗 */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
         .card { background: white; color: #222; padding: 30px; border-radius: 20px; width: 85%; max-width: 380px; border: 6px solid var(--gold); }
         input { width: 85%; padding: 12px; margin: 15px 0; border: 2px solid #ddd; border-radius: 8px; font-size: 1.1rem; text-align: center; }
-        .btn { padding: 12px; width: 100%; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; background: var(--red); color: white; font-size: 1rem; margin-top: 5px; }
+        
+        .btn-group { display: flex; gap: 10px; margin-top: 5px; }
+        .btn { flex: 1; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1rem; }
+        .btn-check { background: var(--red); color: white; }
+        .btn-hint { background: var(--gold); color: #333; }
+        .btn-cancel { background: #eee; color: #666; margin-top: 10px; width: 100%; }
+        
+        #hint-text { font-size: 0.9rem; color: #666; font-style: italic; margin-top: 10px; min-height: 1.2em; border-left: 3px solid var(--gold); padding-left: 10px; display: none; }
+        #feedback { margin: 15px 0; font-weight: bold; min-height: 1.2em; }
     </style>
 </head>
 <body>
 
 <header>
     <h1>🏮 元宵智慧燈謎 🏮</h1>
-    <div id="status" style="color:var(--gold); margin-top: 15px; font-weight: bold;">📡 正在連線 Copilot...</div>
+    <div id="status" style="color:var(--gold); margin-top: 15px; font-weight: bold;">📡 正在召喚 Copilot...</div>
 </header>
 
 <div class="grid" id="main-grid"></div>
 
 <div class="modal" id="modal">
     <div class="card">
-        <h3 id="q-title" style="color:var(--red); line-height: 1.5;"></h3>
+        <h3 id="q-title" style="color:var(--red); line-height: 1.5; margin-bottom: 5px;"></h3>
+        <div id="hint-text"></div>
         <input type="text" id="user-input" placeholder="答案是？">
-        <div id="feedback" style="margin-bottom: 15px; font-weight: bold; min-height: 1.2em;"></div>
-        <button class="btn" onclick="checkAns()">判定</button>
-        <button class="btn" onclick="closeModal()" style="background:#eee; color:#666; margin-top: 10px;">關閉</button>
+        <div id="feedback"></div>
+        
+        <div class="btn-group">
+            <button class="btn btn-hint" onclick="getHint()">給我提示</button>
+            <button class="btn btn-check" onclick="checkAns()">判定作答</button>
+        </div>
+        <button class="btn btn-cancel" onclick="closeModal()">關閉</button>
     </div>
 </div>
 
 <script>
-    /**
-     * 🛡️ 抗掃描混淆區
-     * 請填入反轉後的 Base64 亂碼
-     */
     const SECRET_KEY = "2JzY5YXThFFWzo1QLdFU0MESTd1cDN0NQpHMi9ETIZXcRlUO0R2R5x0TWNHS1U1VYZXOSNkSadXNLd3XTNTW4gTNZ1UMRNlSwEVTCdUQyIUMx8FdhB3XiVHa0l2Z"; 
 
     let riddles = [];
     let cur = null;
 
-    // 解碼邏輯：先反轉字串，再進行 Base64 解碼
     function getDecodedToken() {
         try {
             const reversed = SECRET_KEY.split("").reverse().join("");
             return atob(reversed).trim();
-        } catch (e) {
-            return null;
-        }
+        } catch (e) { return null; }
     }
 
     async function askAI(msgs, jsonMode = false) {
         const token = getDecodedToken();
-        if (!token) {
-            document.getElementById('status').innerText = "❌ 密鑰解析出錯";
-            return null;
-        }
-
         try {
             const res = await fetch("https://models.inference.ai.azure.com/chat/completions", {
                 method: "POST",
-                headers: { 
-                    "Content-Type": "application/json", 
-                    "Authorization": `Bearer ${token}` 
-                },
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
                 body: JSON.stringify({
                     model: "gpt-4o",
                     messages: msgs,
                     response_format: jsonMode ? { type: "json_object" } : undefined
                 })
             });
-
             const data = await res.json();
-            if (!res.ok) throw new Error(data.error?.message || "Bad Credentials");
+            if (!res.ok) throw new Error(data.error?.message || "Error");
             return data.choices[0].message.content;
         } catch (e) {
             document.getElementById('status').innerText = "❌ 失敗：" + e.message;
@@ -104,12 +99,12 @@
     async function init() {
         const raw = await askAI([
             {role: "system", content: "你是一個專業燈謎官。請回傳 JSON: {\"list\": [{\"q\":\"題目\",\"a\":\"答案\"}]}"},
-            {role: "user", content: "給我 12 個有趣的中文燈謎"}
+            {role: "user", content: "給我 12 個適合過年玩的有趣中文燈謎。"}
         ], true);
         
         if (raw) {
             riddles = JSON.parse(raw).list;
-            document.getElementById('status').innerText = "✨ 燈謎已備妥，請點擊挑戰！";
+            document.getElementById('status').innerText = "✨ 燈謎已點亮，請點擊挑戰！";
             const g = document.getElementById('main-grid');
             g.innerHTML = "";
             riddles.forEach((r, i) => {
@@ -120,11 +115,29 @@
                     cur = i;
                     document.getElementById('q-title').innerText = r.q;
                     document.getElementById('feedback').innerText = "";
+                    document.getElementById('hint-text').style.display = 'none';
                     document.getElementById('user-input').value = "";
                     document.getElementById('modal').style.display = 'flex';
                 };
-                g.appendChild(d);
+                grid.appendChild(d);
             });
+        }
+    }
+
+    // 💡 新增：獲取 AI 提示功能
+    async function getHint() {
+        const hBox = document.getElementById('hint-text');
+        hBox.innerText = "💡 AI 思考提示中...";
+        hBox.style.display = 'block';
+
+        const prompt = [
+            {role: "system", content: "你是一個親切的引導者。給予使用者關於燈謎的暗示，但絕對不能直接說出答案。請用一句話簡短描述。"},
+            {role: "user", content: `題目：${riddles[cur].q}\n答案是：${riddles[cur].a}\n請給我一個暗示。`}
+        ];
+
+        const response = await askAI(prompt);
+        if (response) {
+            hBox.innerText = "💡 提示：" + response;
         }
     }
 

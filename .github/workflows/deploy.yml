@@ -1,0 +1,21 @@
+name: Deploy Lantern App
+on:
+  push:
+    branches: [ main ]
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Inject API Key
+        run: |
+          # 使用 sed 把 HTML 裡的佔位符換成你 Secret 裡的 LANTERN
+          sed -i "s/__GEMINI_API_KEY__/${{ secrets.LANTERN }}/g" index.html
+
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: . # 部署目前資料夾
+          branch: gh-pages

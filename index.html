@@ -3,264 +3,183 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gemini AI 燈謎挑戰 - 4x3 版</title>
+    <title>🏮 AI 智能燈謎大會 🏮</title>
     <style>
-        :root {
-            --lantern-red: #d32f2f;
-            --gold: #ffd700;
-        }
-
-        body {
-            font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif;
-            background-color: #0a0a0a;
-            color: white;
-            margin: 0;
-            overflow-x: hidden;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        header { padding: 20px; text-align: center; color: var(--gold); }
-
-        /* 固定 4x3 矩陣佈局 */
-        .matrix-container {
+        :root { --red: #d32f2f; --gold: #ffd700; }
+        body { background: #0e0e0e; color: #fff; font-family: sans-serif; margin: 0; text-align: center; }
+        
+        /* 4x3 矩陣 */
+        .grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr); /* 4 欄 */
-            grid-template-rows: repeat(3, 1fr);    /* 3 列 */
-            gap: 20px;
-            width: 90%;
-            max-width: 800px;
-            margin-bottom: 50px;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            padding: 20px;
+            max-width: 900px;
+            margin: auto;
         }
 
-        .lantern-item {
+        .lantern {
+            background: radial-gradient(circle, #ff5252, var(--red));
             aspect-ratio: 1/1.2;
-            background: radial-gradient(circle at center, #ff4d4d, var(--lantern-red));
-            border-radius: 50% 50% 45% 45%;
             border: 2px solid var(--gold);
+            border-radius: 50% 50% 40% 40%;
             cursor: pointer;
             display: flex;
-            justify-content: center;
             align-items: center;
+            justify-content: center;
             font-weight: bold;
-            box-shadow: 0 5px 15px rgba(211, 47, 47, 0.4);
             transition: 0.3s;
-            text-align: center;
-            padding: 10px;
-            font-size: 1.1rem;
             position: relative;
+            box-shadow: 0 4px 10px rgba(255,0,0,0.3);
         }
 
-        .lantern-item:hover { transform: scale(1.05) translateY(-5px); box-shadow: 0 0 20px var(--gold); }
-        .lantern-item::after { content: "🧧"; position: absolute; bottom: -15px; }
+        .lantern:hover { transform: scale(1.08); box-shadow: 0 0 20px var(--gold); }
+        .lantern::after { content: "🧧"; position: absolute; bottom: -10px; }
 
-        /* Modal 樣式 */
-        #game-modal {
-            display: none;
-            position: fixed;
-            top:0; left:0; width:100%; height:100%;
-            background: rgba(0,0,0,0.85);
-            z-index: 100; justify-content: center; align-items: center;
+        /* Modal */
+        .modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); z-index: 1000; justify-content: center; align-items: center;
+        }
+        .card {
+            background: white; color: #333; padding: 30px; border-radius: 20px;
+            width: 80%; max-width: 400px; border: 4px solid var(--gold);
         }
 
-        .content-card {
-            background: #fff; color: #333; width: 80%; max-width: 450px;
-            padding: 30px; border-radius: 20px; text-align: center;
-            border: 4px solid var(--gold); box-shadow: 0 0 30px rgba(255,215,0,0.3);
-        }
-
-        input { width: 80%; padding: 12px; margin: 15px 0; border: 2px solid #ddd; border-radius: 8px; font-size: 1.1rem; }
-        .btn-group { display: flex; flex-direction: column; gap: 10px; }
-        button { padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1rem; }
-        .btn-main { background: var(--lantern-red); color: white; }
-        .btn-hint { background: #f39c12; color: white; }
-        .btn-close { background: #666; color: white; }
-
-        /* 煙火 Canvas */
-        #fireworks-canvas {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; z-index: 200;
-        }
+        input { width: 90%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; }
+        button { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .btn-check { background: var(--red); color: white; margin-bottom: 5px; }
+        
+        #fireworks { position: fixed; top: 0; left: 0; pointer-events: none; z-index: 2000; }
     </style>
 </head>
 <body>
 
-<canvas id="fireworks-canvas"></canvas>
+<canvas id="fireworks"></canvas>
 
 <header>
-    <h1>🏮 Gemini 智慧燈謎會 🏮</h1>
-    <p>請輸入 API Key 後點選燈籠（4x3 挑戰模式）</p>
-    <input type="password" id="api-key" placeholder="在此輸入 Gemini API Key" style="width: 250px; margin: 5px;">
+    <h1 style="color:var(--gold);">🏮 2026 智慧燈謎會 🏮</h1>
+    <div id="key-section" style="font-size: 0.8rem; opacity: 0.6;">
+        <input type="password" id="api-key" placeholder="若 API 未生效，請輸入 Key" style="width:200px">
+    </div>
 </header>
 
-<div class="matrix-container" id="lantern-grid"></div>
+<div class="grid" id="grid"></div>
 
-<div id="game-modal">
-    <div class="content-card">
-        <h2 id="riddle-title">題目載入中...</h2>
-        <p id="riddle-hint" style="color: #d32f2f; font-weight: bold;"></p>
-        <input type="text" id="user-answer" placeholder="你的答案...">
-        <div id="ai-feedback" style="margin-bottom: 15px; min-height: 20px;"></div>
-        <div class="btn-group">
-            <button class="btn-main" onclick="askGeminiToVerify()">AI 判定答案</button>
-            <div id="fail-options" style="display: none; gap: 10px; flex-direction: column;">
-                <button class="btn-hint" onclick="askGeminiForHint()">AI 再給細節提示</button>
-                <button style="background:#8e44ad; color:white;" onclick="revealAnswer()">揭曉答案</button>
-            </div>
-            <button class="btn-close" onclick="closeModal()">關閉</button>
+<div class="modal" id="modal">
+    <div class="card">
+        <h2 id="q-text">題目</h2>
+        <p id="q-hint" style="color:var(--red)"></p>
+        <input type="text" id="ans-input" placeholder="請輸入答案...">
+        <div id="ai-res" style="margin: 10px 0; font-weight: bold;"></div>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+            <button class="btn-check" onclick="verify()">AI 判定</button>
+            <button id="hint-btn" style="background:#f39c12; color:white; display:none;" onclick="getAiHint()">AI 給個線索</button>
+            <button onclick="closeModal()">取消</button>
         </div>
     </div>
 </div>
 
 <script>
-    const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
-    
-    // 預設 12 題燈謎 (4x3)
+    const BUILT_IN_KEY = "__GEMINI_API_KEY__"; 
     const riddles = [
-        { q: "一人一張口，口下長隻手", a: "拿", h: "猜一字" },
-        { q: "身穿綠衣裳，肚裡紅瓤子", a: "西瓜", h: "猜水果" },
-        { q: "白糖梅子真稀奇", a: "元宵", h: "猜食物" },
-        { q: "一月七日", a: "脂", h: "猜一字" },
-        { q: "遠看像小豹，常在屋頂跳", a: "貓", h: "猜動物" },
-        { q: "有頭沒有頸，有眼沒有眉", a: "魚", h: "猜生物" },
-        { q: "紅口袋，綠口袋", a: "辣椒", h: "猜蔬菜" },
-        { q: "三個人看太陽", a: "春", h: "猜一字" },
-        { q: "一點一橫長，一撇到南洋", a: "府", h: "猜一字" },
-        { q: "左邊水，右邊火", a: "淡", h: "猜一字" },
-        { q: "不用點火，自會發光", a: "螢火蟲", h: "猜昆蟲" },
-        { q: "小小一間房，只有一扇窗", a: "相機", h: "猜物品" }
+        {q:"一隻黑狗，不叫不吼", a:"默", h:"猜一字"},
+        {q:"山上還有山", a:"出", h:"猜一字"},
+        {q:"十張口，一顆心", a:"思", h:"猜一字"},
+        {q:"一來再來", a:"冉", h:"猜一字"},
+        {q:"九隻鳥", a:"鳩", h:"猜一字"},
+        {q:"一點一橫長，一撇到南洋", a:"府", h:"猜一字"},
+        {q:"白糖梅子真稀奇", a:"元宵", h:"猜食物"},
+        {q:"身穿綠衣裳，肚裡紅瓤子", a:"西瓜", h:"猜水果"},
+        {q:"有頭沒有頸，有眼沒有眉", a:"魚", h:"猜生物"},
+        {q:"三個人看太陽", a:"春", h:"猜一字"},
+        {q:"左邊水，右邊火", a:"淡", h:"猜一字"},
+        {q:"小小一間房，只有一扇窗", a:"相機", h:"猜物品"}
     ];
 
-    let currentIdx = null;
+    let current = null;
 
-    function initGrid() {
-        const grid = document.getElementById('lantern-grid');
-        riddles.forEach((item, i) => {
-            const el = document.createElement('div');
-            el.className = 'lantern-item';
-            el.innerText = item.q;
-            el.onclick = () => openRiddle(i);
-            grid.appendChild(el);
+    // 渲染 4x3 燈籠
+    const grid = document.getElementById('grid');
+    riddles.forEach((r, i) => {
+        const div = document.createElement('div');
+        div.className = 'lantern';
+        div.innerText = r.q.substring(0,4);
+        div.onclick = () => {
+            current = r;
+            document.getElementById('q-text').innerText = r.q;
+            document.getElementById('q-hint').innerText = "類別：" + r.h;
+            document.getElementById('ai-res').innerText = "";
+            document.getElementById('ans-input').value = "";
+            document.getElementById('hint-btn').style.display = 'none';
+            document.getElementById('modal').style.display = 'flex';
+        };
+        grid.appendChild(div);
+    });
+
+    function closeModal() { document.getElementById('modal').style.display = 'none'; }
+
+    async function callGemini(prompt) {
+        const key = (BUILT_IN_KEY && !BUILT_IN_KEY.startsWith("__")) ? BUILT_IN_KEY : document.getElementById('api-key').value;
+        if(!key) { alert("請輸入 API Key！"); return null; }
+        
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${key}`;
+        const res = await fetch(url, {
+            method: 'POST',
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
         });
+        const data = await res.json();
+        return data.candidates[0].content.parts[0].text;
     }
 
-    function openRiddle(i) {
-        currentIdx = i;
-        document.getElementById('riddle-title').innerText = riddles[i].q;
-        document.getElementById('riddle-hint').innerText = "提示：" + riddles[i].h;
-        document.getElementById('ai-feedback').innerText = "";
-        document.getElementById('user-answer').value = "";
-        document.getElementById('fail-options').style.display = 'none';
-        document.getElementById('game-modal').style.display = 'flex';
-    }
-
-    function closeModal() { document.getElementById('game-modal').style.display = 'none'; }
-
-    // 調用 Gemini API 進行判定
-    async function askGeminiToVerify() {
-        const apiKey = document.getElementById('api-key').value;
-        const userAns = document.getElementById('user-answer').value;
-        const feedback = document.getElementById('ai-feedback');
+    async function verify() {
+        const userAns = document.getElementById('ans-input').value;
+        const resDiv = document.getElementById('ai-res');
+        resDiv.innerText = "AI 判定中...";
         
-        if (!apiKey) return alert("請先輸入 Gemini API Key");
-
-        feedback.innerText = "✨ AI 思考中...";
+        const prompt = `燈謎題目：${current.q}，正確答案：${current.a}。使用者回答：${userAns}。請只回傳「YES」或「NO」，並附帶一句鼓勵或恭喜的話。`;
+        const result = await callGemini(prompt);
         
-        const prompt = `你是一個燈謎裁判。題目是「${riddles[currentIdx].q}」，標準答案是「${riddles[currentIdx].a}」。使用者的回答是「${userAns}」。請判斷是否正確。
-        如果完全正確或意義極度接近，請回傳「CORRECT」。如果錯誤，請回傳一句簡短且有幽默感的鼓勵話語。`;
+        if(result.includes("YES")) {
+            resDiv.innerHTML = "🎉 " + result.replace("YES", "");
+            launchFireworks();
+        } else {
+            resDiv.innerHTML = "❌ " + result.replace("NO", "");
+            document.getElementById('hint-btn').style.display = 'block';
+        }
+    }
 
-        try {
-            const resp = await fetch(`${API_URL}?key=${apiKey}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+    async function getAiHint() {
+        const resDiv = document.getElementById('ai-res');
+        resDiv.innerText = "AI 思考提示中...";
+        const prompt = `燈謎：${current.q}，答案：${current.a}。請給一個不直接說出答案的隱晦提示。`;
+        resDiv.innerText = "💡 " + await callGemini(prompt);
+    }
+
+    // 簡易煙火
+    function launchFireworks() {
+        const cvs = document.getElementById('fireworks');
+        const ctx = cvs.getContext('2d');
+        cvs.width = window.innerWidth; cvs.height = window.innerHeight;
+        let p = [];
+        for(let i=0; i<100; i++) p.push({
+            x: cvs.width/2, y: cvs.height/2, 
+            vx: (Math.random()-0.5)*10, vy: (Math.random()-0.5)*10,
+            c: `hsl(${Math.random()*360}, 100%, 50%)`, l: 100
+        });
+        function draw() {
+            ctx.clearRect(0,0,cvs.width,cvs.height);
+            p.forEach(i => {
+                i.x+=i.vx; i.y+=i.vy; i.l--;
+                ctx.fillStyle = i.c;
+                ctx.globalAlpha = i.l/100;
+                ctx.fillRect(i.x, i.y, 4, 4);
             });
-            const data = await resp.json();
-            const result = data.candidates[0].content.parts[0].text.trim();
-
-            if (result.includes("CORRECT")) {
-                feedback.innerHTML = "🎉 <span style='color:green'>恭喜答對！</span>";
-                startFireworks();
-                document.getElementById('fail-options').style.display = 'none';
-            } else {
-                feedback.innerHTML = `❌ ${result}`;
-                document.getElementById('fail-options').style.display = 'flex';
-            }
-        } catch (e) {
-            feedback.innerText = "連線失敗，請檢查 Key 或網路。";
+            p = p.filter(i => i.l > 0);
+            if(p.length > 0) requestAnimationFrame(draw);
         }
+        draw();
     }
-
-    // AI 提供進階提示
-    async function askGeminiForHint() {
-        const apiKey = document.getElementById('api-key').value;
-        const feedback = document.getElementById('ai-feedback');
-        feedback.innerText = "💡 AI 正在構思提示...";
-
-        const prompt = `針對燈謎「${riddles[currentIdx].q}」，答案是「${riddles[currentIdx].a}」。請提供一個更具體的線索，但不要直接說出答案。`;
-
-        try {
-            const resp = await fetch(`${API_URL}?key=${apiKey}`, {
-                method: "POST", headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-            });
-            const data = await resp.json();
-            feedback.innerText = "💡 " + data.candidates[0].content.parts[0].text;
-        } catch (e) { feedback.innerText = "無法取得提示。"; }
-    }
-
-    function revealAnswer() {
-        alert("揭曉謎底： " + riddles[currentIdx].a);
-        closeModal();
-    }
-
-    // --- 煙火特效系統 ---
-    const canvas = document.getElementById('fireworks-canvas');
-    const ctx = canvas.getContext('2d');
-    let particles = [];
-
-    function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
-    window.addEventListener('resize', resize);
-    resize();
-
-    class Particle {
-        constructor(x, y, color) {
-            this.x = x; this.y = y; this.color = color;
-            this.vel = { x: (Math.random()-0.5)*8, y: (Math.random()-0.5)*8 };
-            this.life = 100;
-        }
-        draw() {
-            ctx.globalAlpha = this.life / 100;
-            ctx.fillStyle = this.color;
-            ctx.beginPath(); ctx.arc(this.x, this.y, 3, 0, Math.PI*2); ctx.fill();
-        }
-        update() { this.x += this.vel.x; this.y += this.vel.y; this.vel.y += 0.05; this.life -= 2; }
-    }
-
-    function startFireworks() {
-        const colors = ['#ffd700', '#ff0000', '#ff69b4', '#00ff00', '#ffffff'];
-        for(let i=0; i<5; i++) {
-            setTimeout(() => {
-                const x = Math.random() * canvas.width;
-                const y = Math.random() * canvas.height * 0.5;
-                const color = colors[Math.floor(Math.random()*colors.length)];
-                for(let j=0; j<30; j++) particles.push(new Particle(x, y, color));
-            }, i * 300);
-        }
-        animate();
-    }
-
-    function animate() {
-        if (particles.length === 0) return;
-        ctx.clearRect(0,0, canvas.width, canvas.height);
-        particles = particles.filter(p => p.life > 0);
-        particles.forEach(p => { p.update(); p.draw(); });
-        requestAnimationFrame(animate);
-    }
-
-    initGrid();
 </script>
-
 </body>
 </html>

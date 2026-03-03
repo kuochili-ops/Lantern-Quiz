@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 燈謎大會 - 節慶模組</title>
+    <style>
+        :root {
+            --lantern-red: #d32f2f;
+            --gold: #ffd700;
+        }
+
+        body {
+            font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+            background-color: #1a1a1a;
+            color: white;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* 標題區 */
+        header {
+            text-align: center;
+            padding: 20px;
+            color: var(--gold);
+        }
+
+        /* 燈籠矩陣佈局 */
+        .matrix-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 20px;
+            width: 90%;
+            max-width: 800px;
+            padding: 20px;
+        }
+
+        /* 燈籠組件 (延續 Flip-board 概念) */
+        .lantern-item {
+            aspect-ratio: 1/1.2;
+            background: var(--lantern-red);
+            border-radius: 50% 50% 40% 40%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(211, 47, 47, 0.6);
+            transition: transform 0.3s;
+            position: relative;
+            border: 2px solid var(--gold);
+            text-align: center;
+            padding: 10px;
+            font-weight: bold;
+        }
+
+        .lantern-item:hover {
+            transform: scale(1.1) translateY(-10px);
+            box-shadow: 0 0 25px var(--gold);
+        }
+
+        .lantern-item::after {
+            content: "🏮";
+            position: absolute;
+            bottom: -15px;
+            font-size: 20px;
+        }
+
+        /* 互動頁面 (Modal) */
+        #game-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .content-card {
+            background: #fff;
+            color: #333;
+            width: 85%;
+            max-width: 500px;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            border: 5px solid var(--gold);
+        }
+
+        input[type="text"] {
+            width: 80%;
+            padding: 10px;
+            margin: 15px 0;
+            font-size: 1.2rem;
+            border: 2px solid #ccc;
+            border-radius: 5px;
+        }
+
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        button {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background: var(--lantern-red);
+            color: white;
+            font-size: 1rem;
+        }
+
+        button.secondary { background: #555; }
+        button.hint { background: #f39c12; }
+
+        .ai-msg {
+            font-size: 0.9rem;
+            color: #d32f2f;
+            margin-top: 10px;
+            min-height: 1.2em;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>🏮 AI 智能燈謎會 🏮</h1>
+    <p>點選燈籠開始挑戰</p>
+</header>
+
+<div class="matrix-container" id="lantern-grid">
+    </div>
+
+<div id="game-modal">
+    <div class="content-card">
+        <h2 id="riddle-title">題目載入中...</h2>
+        <p id="riddle-hint" style="color: #666; font-style: italic;">提示：點擊開始</p>
+        <hr>
+        <div id="interaction-area">
+            <input type="text" id="user-answer" placeholder="請輸入答案...">
+            <div class="ai-msg" id="ai-feedback"></div>
+            <div class="btn-group">
+                <button onclick="checkAnswer()">提交 AI 判定</button>
+                <div id="fail-options" style="display: none;">
+                    <button class="hint" onclick="askForHint()">AI 再給個提示</button>
+                    <button class="secondary" onclick="revealAnswer()">揭曉答案</button>
+                </div>
+                <button class="secondary" onclick="closeModal()">返回列表</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 燈謎資料庫 (實務上可透過 API 獲取)
+    const riddles = [
+        { q: "一口咬斷牛尾巴", a: "告", hint: "猜一字" },
+        { q: "遠看山有色，近聽水無聲", a: "畫", hint: "猜一藝術品" },
+        { q: "一隻羊在吃草，另一隻羊也走過來", a: "草莓", hint: "猜一種水果 (諧音)" },
+        { q: "紅口袋，綠口袋，有人怕，有人愛", a: "辣椒", hint: "猜一植物" },
+        { q: "左邊綠，右邊紅，左右相遇起涼風", a: "秋", hint: "猜一字" },
+        { q: "像糖不是糖，像雪不化妝", a: "鹽", hint: "猜一生活用品" }
+    ];
+
+    let currentRiddle = null;
+
+    // 初始化燈籠矩陣
+    function initGrid() {
+        const grid = document.getElementById('lantern-grid');
+        riddles.forEach((item, index) => {
+            const div = document.createElement('div');
+            div.className = 'lantern-item';
+            div.innerText = item.q.substring(0, 4) + (item.q.length > 4 ? "..." : "");
+            div.onclick = () => openRiddle(index);
+            grid.appendChild(div);
+        });
+    }
+
+    // 開啟燈謎
+    function openRiddle(index) {
+        currentRiddle = riddles[index];
+        document.getElementById('riddle-title').innerText = currentRiddle.q;
+        document.getElementById('riddle-hint').innerText = "提示：" + currentRiddle.hint;
+        document.getElementById('ai-feedback').innerText = "";
+        document.getElementById('user-answer').value = "";
+        document.getElementById('fail-options').style.display = 'none';
+        document.getElementById('game-modal').style.display = 'flex';
+    }
+
+    // 關閉視窗
+    function closeModal() {
+        document.getElementById('game-modal').style.display = 'none';
+    }
+
+    // 判定答案 (模擬 AI 邏輯)
+    function checkAnswer() {
+        const userVal = document.getElementById('user-answer').value.trim();
+        const feedback = document.getElementById('ai-feedback');
+        
+        if (userVal === currentRiddle.a) {
+            feedback.style.color = "green";
+            feedback.innerText = "✨ AI 判定：太聰明了！完全正確！";
+            document.getElementById('fail-options').style.display = 'none';
+        } else {
+            feedback.style.color = "#d32f2f";
+            feedback.innerText = "❌ AI 判定：可惜不對喔，再想想？";
+            document.getElementById('fail-options').style.display = 'block';
+        }
+    }
+
+    // AI 進一步提示
+    function askForHint() {
+        const feedback = document.getElementById('ai-feedback');
+        // 模擬 AI 生成細節提示
+        const advancedHints = [
+            `這是一個關於「${currentRiddle.a.length}個字」的答案。`,
+            `首字筆畫大約是...保密，但你可以往「${currentRiddle.hint}」的方向再深入一點。`,
+            `想像一下這個東西的形狀或讀音。`
+        ];
+        feedback.style.color = "#f39c12";
+        feedback.innerText = "💡 AI 深入提示：" + advancedHints[Math.floor(Math.random() * advancedHints.length)];
+    }
+
+    // 揭曉答案
+    function revealAnswer() {
+        alert("這題的答案是： " + currentRiddle.a);
+        closeModal();
+    }
+
+    // 啟動
+    initGrid();
+</script>
+
+</body>
+</html>

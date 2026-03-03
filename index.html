@@ -3,18 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏮 AI 智慧燈謎 - 最終相容版</title>
+    <title>🏮 AI 智慧燈謎 - 核心連線版</title>
     <style>
         :root { --red: #d32f2f; --gold: #ffd700; --dark: #0a0a0a; }
         body { background: var(--dark); color: #fff; font-family: sans-serif; margin: 0; text-align: center; }
         header { padding: 30px 10px; }
-        .status-msg { font-size: 0.9rem; color: var(--gold); margin-bottom: 10px; padding: 0 20px; }
-        .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 10px; max-width: 800px; margin: auto; }
+        .status-msg { font-size: 0.9rem; color: var(--gold); margin: 10px; word-break: break-all; }
+        .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; padding: 10px; max-width: 800px; margin: auto; }
         .lantern {
             background: radial-gradient(circle, #ff4d4d, var(--red)); aspect-ratio: 1/1.2;
             border: 2px solid var(--gold); border-radius: 50% 50% 45% 45%; cursor: pointer;
             display: flex; align-items: center; justify-content: center; padding: 10px;
-            font-size: 0.95rem; font-weight: bold; transition: 0.3s; color: white;
+            font-size: 1rem; font-weight: bold; transition: 0.3s; color: white;
             box-shadow: 0 5px 15px rgba(255,0,0,0.3);
         }
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; justify-content: center; align-items: center; }
@@ -27,8 +27,8 @@
 
 <header>
     <h1 style="color:var(--gold);">🏮 AI 智慧燈謎 🏮</h1>
-    <div id="status" class="status-msg">請貼入 API Key 並按 Enter</div>
-    <input type="password" id="api-key" placeholder="貼入 API Key" style="width:200px; background:#222; color:#eee; border:1px solid #444; padding:5px;">
+    <div id="status" class="status-msg">請輸入 API Key 後按下 Enter 啟動</div>
+    <input type="password" id="api-key" placeholder="貼入 API Key" style="width:250px; background:#222; color:#eee; border:1px solid #444; padding:8px;">
 </header>
 
 <div class="grid" id="lantern-grid"></div>
@@ -37,7 +37,7 @@
     <div class="card">
         <h2 id="modal-q">題目</h2>
         <input type="text" id="ans-input" placeholder="答案是...">
-        <div id="ai-feedback" style="margin: 10px 0; font-weight: bold; min-height: 1.5em;"></div>
+        <div id="ai-feedback" style="margin: 10px 0; font-weight: bold;"></div>
         <button style="background:var(--red); color:white;" onclick="verifyAnswer()">判定</button>
         <button style="background:#666; color:white;" onclick="closeModal()">關閉</button>
     </div>
@@ -47,61 +47,64 @@
     let riddles = [];
     let currentIdx = null;
 
-    // 💡 定義多種可能的 API 組合，自動尋找能用的
-    const TRY_CONFIGS = [
-        { ver: "v1beta", model: "gemini-1.5-flash" },
-        { ver: "v1", model: "gemini-pro" },
-        { ver: "v1beta", model: "gemini-pro" }
-    ];
+    async function callAI(promptText) {
+        const key = document.getElementById('api-key').value.trim();
+        if(!key) { alert("請先輸入 API Key"); return null; }
 
-    function getApiKey() {
-        return document.getElementById('api-key').value.trim();
-    }
+        const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+        
+        const payload = {
+            contents: [{ parts: [{ text: promptText }] }],
+            generationConfig: {
+                temperature: 0.8,
+                topP: 0.95,
+                maxOutputTokens: 1024,
+                responseMimeType: "application/json" // 💡 強制要求 AI 回傳 JSON 格式
+            },
+            safetySettings: [ // 💡 關閉過濾器，避免因為燈謎題目被誤判導致 400/404
+                { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+                { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+                { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+                { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+            ]
+        };
 
-    async function callAI(text) {
-        const key = getApiKey();
-        if(!key) return null;
+        try {
+            const resp = await fetch(`${API_URL}?key=${key}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
 
-        for (let config of TRY_CONFIGS) {
-            const url = `https://generativelanguage.googleapis.com/${config.ver}/models/${config.model}:generateContent?key=${key}`;
-            try {
-                const response = await fetch(url, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ contents: [{ parts: [{ text: text }] }] })
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log(`✅ 成功使用組合: ${config.ver} / ${config.model}`);
-                    return data.candidates[0].content.parts[0].text;
-                }
-                console.warn(`❌ 失敗組合: ${config.ver} / ${config.model} (HTTP ${response.status})`);
-            } catch (e) {
-                console.error(`連線失敗: ${config.model}`);
+            const data = await resp.json();
+            if (!resp.ok) {
+                const msg = data.error ? data.error.message : "連線失敗";
+                document.getElementById('status').innerText = "❌ API 報錯: " + msg;
+                return null;
             }
+            return data.candidates[0].content.parts[0].text;
+        } catch (e) {
+            document.getElementById('status').innerText = "❌ 網路錯誤: " + e.message;
+            return null;
         }
-        return null;
     }
 
     async function initApp() {
         const status = document.getElementById('status');
-        status.innerText = "⏳ AI 正在嘗試多種連線路徑...";
+        status.innerText = "⏳ AI 正在思考 12 個燈謎...";
         
-        const prompt = "請提供12個燈謎 JSON: [{\"q\":\"題\",\"a\":\"答\",\"h\":\"提示\"}]。不要解釋文字。";
+        // 💡 配合 responseMimeType，Prompt 變得很簡單
+        const prompt = "Generate 12 Chinese lantern riddles in an array of objects: [{\"q\":\"question\",\"a\":\"answer\",\"h\":\"hint\"}].";
+        
         const result = await callAI(prompt);
-        
         if(result) {
             try {
-                const cleanJson = result.replace(/```json/g, "").replace(/```/g, "").trim();
-                riddles = JSON.parse(cleanJson);
-                status.innerText = "✨ 燈謎載入成功！";
+                riddles = JSON.parse(result);
+                status.innerText = "✨ AI 出題完畢！請挑選燈籠。";
                 renderGrid();
-            } catch(e) { 
-                status.innerText = "❌ 解析失敗，請再按一次 Enter"; 
+            } catch(e) {
+                status.innerText = "❌ 解析失敗: " + e.message;
             }
-        } else {
-            status.innerText = "❌ 偵測不到可用模型。請檢查 API Key 是否啟用且無過期。";
         }
     }
 
@@ -111,12 +114,11 @@
         riddles.forEach((r, i) => {
             const div = document.createElement('div');
             div.className = 'lantern';
-            div.innerText = r.q.substring(0, 8);
+            div.innerText = r.q.length > 8 ? r.q.substring(0, 7) + "..." : r.q;
             div.onclick = () => {
                 currentIdx = i;
                 document.getElementById('modal-q').innerText = r.q;
                 document.getElementById('ai-feedback').innerText = "";
-                document.getElementById('ans-input').value = "";
                 document.getElementById('modal').style.display = 'flex';
             };
             container.appendChild(div);
@@ -127,9 +129,15 @@
         const userAns = document.getElementById('ans-input').value;
         const feedback = document.getElementById('ai-feedback');
         feedback.innerText = "🔍 AI 評判中...";
-        const prompt = `題目：${riddles[currentIdx].q}，答案：${riddles[currentIdx].a}。使用者回答：${userAns}。答對回 CORRECT 加上誇獎，答錯回吐槽。`;
+        
+        const prompt = `Task: Judge if answer is correct. Riddle: "${riddles[currentIdx].q}", Correct Answer: "${riddles[currentIdx].a}", User Answer: "${userAns}". Return JSON: {"correct": true/false, "comment": "humorous comment in Chinese"}`;
+        
         const result = await callAI(prompt);
-        feedback.innerText = result ? result.replace("CORRECT", "🥳") : "😅 沒反應，再試一次！";
+        if(result) {
+            const judge = JSON.parse(result);
+            feedback.innerText = (judge.correct ? "🥳 " : "😅 ") + judge.comment;
+            feedback.style.color = judge.correct ? "green" : "red";
+        }
     }
 
     function closeModal() { document.getElementById('modal').style.display = 'none'; }

@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏮 AI 智慧燈謎 - 最終修正版</title>
+    <title>🏮 AI 智慧燈謎矩陣 - 2026 修正版</title>
     <style>
         :root { --red: #d32f2f; --gold: #ffd700; --dark: #0a0a0a; }
-        body { background: var(--dark); color: #fff; font-family: sans-serif; margin: 0; text-align: center; }
+        body { background: var(--dark); color: #fff; font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif; margin: 0; text-align: center; }
         header { padding: 30px 10px; }
-        .status-msg { font-size: 0.9rem; color: var(--gold); margin-bottom: 10px; min-height: 1.2em; }
+        .status-msg { font-size: 0.9rem; color: var(--gold); margin-bottom: 10px; min-height: 1.2em; word-break: break-all; padding: 0 20px; }
         .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; padding: 10px; max-width: 800px; margin: auto; }
         .lantern {
             background: radial-gradient(circle, #ff4d4d, var(--red)); aspect-ratio: 1/1.2;
@@ -18,8 +18,8 @@
             box-shadow: 0 5px 15px rgba(255,0,0,0.3);
         }
         .lantern:hover { transform: scale(1.1); box-shadow: 0 0 20px var(--gold); }
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); z-index: 1000; justify-content: center; align-items: center; }
-        .card { background: white; color: #333; padding: 30px; border-radius: 20px; width: 85%; max-width: 400px; border: 5px solid var(--gold); }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; justify-content: center; align-items: center; }
+        .card { background: white; color: #333; padding: 30px; border-radius: 20px; width: 85%; max-width: 400px; border: 5px solid var(--gold); text-align: center; }
         input { width: 80%; padding: 12px; margin: 10px 0; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem; }
         button { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin: 5px; }
     </style>
@@ -27,8 +27,8 @@
 <body>
 
 <header>
-    <h1 style="color:var(--gold);">🏮 AI 智慧燈謎 🏮</h1>
-    <div id="status" class="status-msg">請貼入 API Key 後按 Enter</div>
+    <h1 style="color:var(--gold);">🏮 AI 智慧燈謎矩陣 🏮</h1>
+    <div id="status" class="status-msg">請貼入 API Key 後按 Enter 載入題目</div>
     <input type="password" id="api-key" placeholder="貼入 API Key" style="width:250px; background:#222; color:#eee; border:1px solid #444; padding:8px;">
 </header>
 
@@ -49,7 +49,7 @@
     let riddles = [];
     let currentIdx = null;
 
-    // 💡 關鍵修正：回到 v1beta，這是目前支援 gemini-1.5-flash 的路徑
+    // 💡 修正點：使用 v1beta 並確保路徑完整
     const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
 
     function getApiKey() {
@@ -61,11 +61,17 @@
         const key = getApiKey();
         if(!key) return null;
 
-        // 確保 Payload 結構符合 v1beta 要求
+        // 💡 修正點：使用最嚴謹的請求結構
         const payload = {
             contents: [{
                 parts: [{ text: text }]
-            }]
+            }],
+            generationConfig: {
+                temperature: 0.7,
+                topK: 40,
+                topP: 0.95,
+                maxOutputTokens: 1024,
+            }
         };
 
         try {
@@ -78,29 +84,33 @@
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.error ? data.error.message : "API 錯誤");
+                throw new Error(data.error ? data.error.message : "API Error");
+            }
+
+            if (!data.candidates || data.candidates.length === 0) {
+                throw new Error("AI 未能產生內容，請檢查安全設定或重試。");
             }
 
             return data.candidates[0].content.parts[0].text;
         } catch (e) {
-            document.getElementById('status').innerText = "❌ 報錯: " + e.message;
-            console.error("Debug Info:", e);
+            document.getElementById('status').innerText = "❌ 錯誤: " + e.message;
+            console.error("Full Error Info:", e);
             return null;
         }
     }
 
     async function initApp() {
         const status = document.getElementById('status');
-        status.innerText = "⏳ AI 正在思考燈謎...";
+        status.innerText = "⏳ AI 正在精心出題中 (使用 v1beta)...";
         
-        const prompt = "請隨機生成 12 個中文燈謎。請嚴格以 JSON 陣列格式回傳：[{\"q\":\"題目\",\"a\":\"答案\",\"h\":\"提示\"}]。不要任何前言或 Markdown。";
+        const prompt = "你是一個燈謎專家。請提供12個燈謎，並以 JSON 陣列格式輸出。每個物件包含 q (題目), a (答案), h (提示)。請直接輸出 JSON，不要包含 Markdown 或額外文字。範例: [{\"q\":\"題目\",\"a\":\"答案\",\"h\":\"提示\"}]";
         
         const result = await callAI(prompt);
         if(result) {
             try {
                 const cleanJson = result.replace(/```json/g, "").replace(/```/g, "").trim();
                 riddles = JSON.parse(cleanJson);
-                status.innerText = "✨ 載入成功！請點擊燈籠。";
+                status.innerText = "✨ 燈謎載入成功！";
                 renderGrid();
             } catch(e) {
                 status.innerText = "❌ 解析失敗，請重試";
@@ -130,7 +140,7 @@
         const userAns = document.getElementById('ans-input').value.trim();
         if(!userAns) return;
         const feedback = document.getElementById('ai-feedback');
-        feedback.innerText = "🔍 評判中...";
+        feedback.innerText = "🔍 判定中...";
         const prompt = `題目：${riddles[currentIdx].q}，答案：${riddles[currentIdx].a}。使用者答：${userAns}。請判斷對錯。若對請說「正確」；若錯請給幽默提示。`;
         const result = await callAI(prompt);
         if(result) {

@@ -3,85 +3,97 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏮 GitHub Copilot 智慧燈謎 🏮</title>
+    <title>🏮 元宵 AI 智慧燈謎 - 點開即玩版</title>
     <style>
         :root { --red: #e63946; --gold: #ffb703; --dark: #0d1117; }
-        body { background: var(--dark); color: #c9d1d9; font-family: sans-serif; text-align: center; margin: 0; }
-        header { padding: 30px; border-bottom: 1px solid #30363d; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px; padding: 20px; max-width: 900px; margin: auto; }
-        .lantern { 
-            background: #ff4d4d; aspect-ratio: 1/1.2; border: 2px solid var(--gold); border-radius: 40% 40% 30% 30%;
-            cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 10px; font-weight: bold; color: white;
+        body { 
+            background: var(--dark); background-image: radial-gradient(circle, #1b2129, #0d1117);
+            color: #c9d1d9; font-family: sans-serif; text-align: center; margin: 0; min-height: 100vh;
         }
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; justify-content: center; align-items: center; }
-        .card { background: #161b22; padding: 30px; border-radius: 15px; width: 85%; max-width: 400px; border: 1px solid #30363d; }
-        input { width: 80%; padding: 10px; margin: 10px 0; border-radius: 5px; border: 1px solid #30363d; background: #0d1117; color: white; }
-        button { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        header { padding: 60px 20px; }
+        h1 { color: var(--gold); font-size: 2.8rem; text-shadow: 0 0 20px rgba(255, 183, 3, 0.4); margin: 0; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 30px; padding: 20px 40px; max-width: 1000px; margin: auto; }
+        .lantern { 
+            background: radial-gradient(circle at 50% 40%, #ff4d4d, var(--red)); 
+            aspect-ratio: 1/1.2; border: 3px solid var(--gold); border-radius: 45% 45% 35% 35%;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 15px; 
+            font-weight: bold; color: white; box-shadow: 0 10px 20px rgba(230, 57, 70, 0.3);
+            animation: sway 3s infinite ease-in-out; transform-origin: top center;
+        }
+        @keyframes sway { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
+        .card { background: white; color: #222; padding: 40px; border-radius: 25px; width: 85%; max-width: 400px; border: 8px solid var(--gold); }
+        input { width: 85%; padding: 12px; margin: 15px 0; border: 2px solid #ddd; border-radius: 8px; font-size: 1.1rem; text-align: center; }
+        .btn { padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; background: var(--red); color: white; font-size: 1rem; }
     </style>
 </head>
 <body>
 
 <header>
-    <h1 style="color:var(--gold);">🏮 GitHub Copilot 燈謎</h1>
-    <div id="status" style="color:#8b949e; margin: 10px;">請輸入具備 Models:Read 權限的 Token</div>
-    <input type="password" id="gh-token" placeholder="貼入 ghp_ 開頭的 Token" style="width:250px;">
+    <h1>🏮 AI 智慧燈謎 🏮</h1>
+    <div id="status" style="margin-top:20px; color:var(--gold); font-weight: bold;">⏳ 正在連線 GitHub Copilot...</div>
 </header>
 
 <div class="grid" id="main-grid"></div>
 
 <div class="modal" id="modal">
     <div class="card">
-        <h3 id="q-title" style="color:var(--gold)"></h3>
-        <input type="text" id="user-input" placeholder="答案是？">
-        <div id="feedback" style="margin: 15px; font-weight: bold;"></div>
-        <button onclick="checkAns()" style="background:#238636; color:white;">判定</button>
-        <button onclick="closeModal()" style="background:#30363d; color:white;">關閉</button>
+        <h3 id="q-title" style="color:var(--red); line-height: 1.4;"></h3>
+        <input type="text" id="user-input" placeholder="請輸入謎底">
+        <div id="feedback" style="margin: 15px; font-weight: bold; font-size: 1.2rem; min-height: 1.5em;"></div>
+        <button class="btn" onclick="checkAns()">送出判定</button>
+        <button class="btn" onclick="closeModal()" style="background:#eee; color:#666;">關閉</button>
     </div>
 </div>
 
 <script>
+    // 💡 替換成你的 Base64 Token
+    const ENCODED_TOKEN = "Z2l0aHViX3BhdF8xMUIyQUdCTVEwcDRjVHQ2cnFJeVVoX3poTDZVU2RTQ2xSc3ZITFFvcDlhWGNwMGJZYUQzNnI0MWJ2YU1NWVE3UWo0SVhRTFlHRk5RYktqaVlE"; 
     let riddles = [];
     let cur = null;
 
     async function askAI(msgs, jsonMode = false) {
-        const token = document.getElementById('gh-token').value.trim();
-        const res = await fetch("https://models.inference.ai.azure.com/chat/completions", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-            body: JSON.stringify({
-                model: "gpt-4o",
-                messages: msgs,
-                response_format: jsonMode ? { type: "json_object" } : undefined
-            })
-        });
-        const data = await res.json();
-        if (!res.ok) {
-            document.getElementById('status').innerText = "❌ 權限錯誤: " + (data.error?.message || "請檢查 Token 權限");
+        try {
+            const res = await fetch("https://models.inference.ai.azure.com/chat/completions", {
+                method: "POST",
+                headers: { 
+                    "Content-Type": "application/json", 
+                    "Authorization": `Bearer ${atob(ENCODED_TOKEN)}` // 自動解碼
+                },
+                body: JSON.stringify({
+                    model: "gpt-4o",
+                    messages: msgs,
+                    response_format: jsonMode ? { type: "json_object" } : undefined
+                })
+            });
+            const data = await res.json();
+            return data.choices[0].message.content;
+        } catch (e) {
+            document.getElementById('status').innerText = "❌ 連線失敗，可能 Token 已過期。";
             return null;
         }
-        return data.choices[0].message.content;
     }
 
     async function init() {
-        document.getElementById('status').innerText = "⏳ 正在召喚 GPT-4o 出題...";
         const raw = await askAI([
-            {role: "system", content: "你是一個燈謎官。請回傳 JSON 格式: {\"list\": [{\"q\":\"題目\",\"a\":\"答案\"}]}"},
-            {role: "user", content: "給我 12 個中文燈謎"}
+            {role: "system", content: "你是一個燈謎官。請回傳 JSON: {\"list\": [{\"q\":\"題目\",\"a\":\"答案\"}]}"},
+            {role: "user", content: "請給我 12 個創意中文燈謎。"}
         ], true);
         
         if (raw) {
             riddles = JSON.parse(raw).list;
-            document.getElementById('status').innerText = "✅ 點亮成功！";
+            document.getElementById('status').innerText = "✨ 燈籠已點亮！點擊挑戰。";
             const g = document.getElementById('main-grid');
             g.innerHTML = "";
             riddles.forEach((r, i) => {
                 const d = document.createElement('div');
                 d.className = 'lantern';
-                d.innerText = r.q.substring(0, 8) + "...";
+                d.innerText = r.q.substring(0, 10) + "...";
                 d.onclick = () => {
                     cur = i;
                     document.getElementById('q-title').innerText = r.q;
                     document.getElementById('feedback').innerText = "";
+                    document.getElementById('user-input').value = "";
                     document.getElementById('modal').style.display = 'flex';
                 };
                 g.appendChild(d);
@@ -92,20 +104,20 @@
     async function checkAns() {
         const ans = document.getElementById('user-input').value;
         const fb = document.getElementById('feedback');
-        fb.innerText = "🔍 AI 評判中...";
+        fb.innerText = "🔍 評判中...";
         const raw = await askAI([
-            {role: "system", content: "判斷對錯並用中文簡短回覆。JSON: {\"ok\":true/false, \"msg\":\"內容\"}"},
+            {role: "system", content: "判斷對錯並用中文幽默回覆。JSON: {\"ok\":true/false, \"msg\":\"內容\"}"},
             {role: "user", content: `題:${riddles[cur].q}, 正確:${riddles[cur].a}, 使用者:${ans}`}
         ], true);
         if (raw) {
             const res = JSON.parse(raw);
             fb.innerText = (res.ok ? "🟢 " : "🔴 ") + res.msg;
-            fb.style.color = res.ok ? "#3fb950" : "#f85149";
+            fb.style.color = res.ok ? "green" : "red";
         }
     }
 
     function closeModal() { document.getElementById('modal').style.display = 'none'; }
-    document.getElementById('gh-token').addEventListener('keypress', e => { if(e.key==='Enter') init(); });
+    window.onload = init;
 </script>
 </body>
 </html>

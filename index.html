@@ -3,44 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏮 AI 智慧燈謎矩陣 - 最終修正 🏮</title>
+    <title>🏮 GitHub Copilot 智慧燈謎矩陣 🏮</title>
     <style>
-        :root { --red: #d32f2f; --gold: #ffd700; --dark: #0a0a0a; }
-        body { background: var(--dark); color: #fff; font-family: 'PingFang TC', sans-serif; margin: 0; text-align: center; }
-        header { padding: 40px 20px; }
-        .status-msg { font-size: 0.9rem; color: var(--gold); margin: 15px; min-height: 1.5em; word-break: break-all; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 20px; padding: 20px; max-width: 900px; margin: auto; }
+        :root { --red: #e63946; --gold: #ffb703; --dark: #0d1117; --gh-gray: #30363d; }
+        body { background: var(--dark); color: #c9d1d9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; margin: 0; text-align: center; }
+        header { padding: 40px 20px; border-bottom: 1px solid var(--gh-gray); }
+        h1 { color: var(--gold); margin: 0; font-size: 2.2rem; }
+        .status-msg { font-size: 0.9rem; color: #8b949e; margin: 15px; min-height: 1.5em; }
+        
+        /* 燈籠矩陣 */
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px; padding: 30px; max-width: 1000px; margin: auto; }
         .lantern {
-            background: radial-gradient(circle at 50% 40%, #ff4d4d, var(--red)); aspect-ratio: 1/1.2;
-            border: 3px solid var(--gold); border-radius: 50% 50% 40% 40%; cursor: pointer;
+            background: radial-gradient(circle at 50% 30%, #ff4d4d, var(--red)); aspect-ratio: 1/1.2;
+            border: 2px solid var(--gold); border-radius: 40% 40% 35% 35%; cursor: pointer;
             display: flex; align-items: center; justify-content: center; padding: 15px;
-            font-size: 1rem; font-weight: bold; transition: 0.3s; color: white;
-            box-shadow: 0 10px 20px rgba(211, 47, 47, 0.4);
+            font-size: 1rem; font-weight: bold; transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); color: white;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3); position: relative;
         }
-        .lantern:hover { transform: translateY(-5px); box-shadow: 0 0 20px var(--gold); }
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; justify-content: center; align-items: center; }
-        .card { background: white; color: #333; padding: 40px; border-radius: 25px; width: 90%; max-width: 400px; border: 6px solid var(--gold); }
-        input { width: 80%; padding: 12px; margin: 10px 0; border: 2px solid #ddd; border-radius: 10px; font-size: 1rem; text-align: center; }
-        button { padding: 10px 25px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin: 5px; }
+        .lantern:hover { transform: translateY(-10px); box-shadow: 0 0 20px var(--gold); }
+        .lantern::after { content: ""; position: absolute; bottom: -12px; width: 3px; height: 12px; background: var(--gold); }
+
+        /* 彈窗 */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
+        .card { background: #161b22; color: #f0f6fc; padding: 40px; border-radius: 20px; width: 90%; max-width: 450px; border: 1px solid var(--gh-gray); text-align: center; }
+        input { width: 80%; padding: 12px; margin: 15px 0; border: 1px solid var(--gh-gray); border-radius: 6px; background: #0d1117; color: white; font-size: 1rem; text-align: center; }
+        button { padding: 10px 25px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; margin: 5px; transition: 0.2s; }
+        .btn-primary { background: #238636; color: white; }
+        .btn-secondary { background: var(--gh-gray); color: #c9d1d9; }
+        button:hover { opacity: 0.8; }
     </style>
 </head>
 <body>
 
 <header>
-    <h1 style="color:var(--gold);">🏮 AI 智慧燈謎矩陣 🏮</h1>
-    <div id="status" class="status-msg">請輸入 API Key 並按 Enter</div>
-    <input type="password" id="api-key" placeholder="貼入 Gemini API Key" style="width:280px; background:#1a1a1a; color:var(--gold); border:1px solid #444; padding:10px;">
+    <h1>🏮 GitHub Models 燈謎矩陣</h1>
+    <div id="status" class="status-msg">請貼入 GitHub PAT (Personal Access Token) 並按 Enter</div>
+    <input type="password" id="github-token" placeholder="ghp_xxxxxxxxxxxx" style="width:300px;">
 </header>
 
-<div class="grid" id="lantern-grid"></div>
+<div class="grid" id="grid"></div>
 
 <div class="modal" id="modal">
     <div class="card">
-        <h2 id="modal-q">載入中...</h2>
-        <input type="text" id="ans-input" placeholder="謎底是？">
-        <div id="ai-feedback" style="margin: 15px 0; font-weight: bold; font-size: 1.2rem;"></div>
-        <button style="background:var(--red); color:white;" onclick="verifyAnswer()">提交</button>
-        <button style="background:#666; color:white;" onclick="closeModal()">關閉</button>
+        <p style="color: #8b949e; font-size: 0.8rem; margin-bottom: 5px;">GitHub Copilot 題目：</p>
+        <h2 id="modal-q" style="margin-top: 0; color: var(--gold);">題目載入中...</h2>
+        <input type="text" id="ans-input" placeholder="請輸入謎底">
+        <div id="ai-feedback" style="margin: 20px 0; font-weight: bold; font-size: 1.1rem; min-height: 1.5em;"></div>
+        <button class="btn-primary" onclick="verifyAnswer()">提交判定</button>
+        <button class="btn-secondary" onclick="closeModal()">返回列表</button>
     </div>
 </div>
 
@@ -48,72 +58,76 @@
     let riddles = [];
     let currentIdx = null;
 
-    // 💡 定義多個可能的模型名稱進行探測
-    const MODELS = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro"];
+    // GitHub Models API 設定
+    const API_URL = "https://models.inference.ai.azure.com/chat/completions";
+    const MODEL_NAME = "gpt-4o"; // 你也可以換成 gpt-4o-mini
 
-    async function callAI(promptText) {
-        const key = document.getElementById('api-key').value.trim();
-        if(!key) return null;
+    async function callGitHubAI(messages, isJson = false) {
+        const token = document.getElementById('github-token').value.trim();
+        if(!token) { alert("請先輸入 GitHub Token"); return null; }
 
-        // 💡 嘗試每一個模型直到成功
-        for (let modelName of MODELS) {
-            const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${key}`;
-            
-            try {
-                const resp = await fetch(API_URL, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: promptText }] }],
-                        generationConfig: { 
-                            temperature: 0.7,
-                            responseMimeType: "application/json" 
-                        }
-                    })
-                });
+        const payload = {
+            model: MODEL_NAME,
+            messages: messages,
+            temperature: 0.8,
+            max_tokens: 1024
+        };
 
-                const data = await resp.json();
-                if (resp.ok) {
-                    console.log(`✅ 成功連線模型: ${modelName}`);
-                    return data.candidates[0].content.parts[0].text;
-                } else {
-                    console.warn(`❌ 模型 ${modelName} 失敗: ${data.error.message}`);
-                    // 繼續嘗試下一個模型
-                }
-            } catch (e) {
-                console.error(`網路層錯誤 (${modelName}):`, e);
-            }
+        // 如果需要 JSON 格式，加入 format 參數 (GPT-4o 支援)
+        if(isJson) {
+            payload.response_format = { type: "json_object" };
         }
-        
-        document.getElementById('status').innerText = "❌ 嘗試了所有模型 (Flash/Pro) 均失敗，請確認 API Key 權限。";
-        return null;
+
+        try {
+            const response = await fetch(API_URL, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error ? data.error.message : "API 呼叫失敗");
+            
+            return data.choices[0].message.content;
+        } catch (e) {
+            document.getElementById('status').innerText = "❌ 錯誤: " + e.message;
+            console.error(e);
+            return null;
+        }
     }
 
     async function initApp() {
         const status = document.getElementById('status');
-        status.innerText = "⏳ AI 正在探測可用路徑並生成題目...";
+        status.innerText = "⏳ 正在透過 GitHub Models 生成 12 個獨家燈謎...";
         
-        const prompt = "Generate 12 Chinese lantern riddles. Output ONLY a JSON array of objects: [{\"q\":\"question\",\"a\":\"answer\",\"h\":\"hint\"}]";
-        
-        const result = await callAI(prompt);
+        const messages = [
+            { role: "system", content: "你是一個專業的元宵燈謎官。請輸出一組 JSON 物件，包含一個名為 riddles 的陣列，內含 12 個物件，每個物件有 q (題目), a (答案), h (提示)。" },
+            { role: "user", content: "請給我 12 個有趣的中文燈謎。" }
+        ];
+
+        const result = await callGitHubAI(messages, true);
         if(result) {
             try {
-                riddles = JSON.parse(result);
-                status.innerText = "✨ 連線成功！題目已備妥。";
+                const parsed = JSON.parse(result);
+                riddles = parsed.riddles;
+                status.innerText = "✨ GitHub Copilot 已為您點亮 12 盞智慧燈籠！";
                 renderGrid();
             } catch(e) {
-                status.innerText = "❌ JSON 解析失敗，請再按一次 Enter";
+                status.innerText = "❌ JSON 解析失敗，請重試";
             }
         }
     }
 
     function renderGrid() {
-        const container = document.getElementById('lantern-grid');
+        const container = document.getElementById('grid');
         container.innerHTML = "";
         riddles.forEach((r, i) => {
             const div = document.createElement('div');
             div.className = 'lantern';
-            div.innerText = r.q.length > 8 ? r.q.substring(0, 7) + "..." : r.q;
+            div.innerText = r.q.substring(0, 10) + "...";
             div.onclick = () => {
                 currentIdx = i;
                 document.getElementById('modal-q').innerText = r.q;
@@ -130,20 +144,28 @@
         const feedback = document.getElementById('ai-feedback');
         if(!userAns) return;
 
-        feedback.innerText = "🔍 AI 評判中...";
+        feedback.innerText = "🔍 Copilot 評判中...";
+        feedback.style.color = "#8b949e";
         
-        const prompt = `Task: Judge user answer. Riddle: "${riddles[currentIdx].q}", Correct: "${riddles[currentIdx].a}", User: "${userAns}". Return JSON: {"correct": true/false, "comment": "Chinese comment"}`;
-        
-        const result = await callAI(prompt);
+        const messages = [
+            { role: "system", content: "你是一個毒舌但幽默的燈謎評判官。請判斷使用者的答案是否正確。" },
+            { role: "user", content: `題目：${riddles[currentIdx].q}\n正確答案：${riddles[currentIdx].a}\n使用者回答：${userAns}\n請判斷對錯，並給予一段簡短、有創意的中文回覆。格式：{"correct": true/false, "msg": "回覆內容"}` }
+        ];
+
+        const result = await callGitHubAI(messages, true);
         if(result) {
             const res = JSON.parse(result);
-            feedback.innerText = (res.correct ? "🥳 " : "😅 ") + res.comment;
-            feedback.style.color = res.correct ? "green" : "red";
+            feedback.innerText = (res.correct ? "🥳 " : "😅 ") + res.msg;
+            feedback.style.color = res.correct ? "#3fb950" : "#f85149";
         }
     }
 
     function closeModal() { document.getElementById('modal').style.display = 'none'; }
-    document.getElementById('api-key').addEventListener('keypress', e => { if(e.key === 'Enter') initApp(); });
+
+    // 監聽 Token 輸入框 Enter 鍵
+    document.getElementById('github-token').addEventListener('keypress', e => {
+        if(e.key === 'Enter') initApp();
+    });
 </script>
 </body>
 </html>

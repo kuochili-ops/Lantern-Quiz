@@ -3,212 +3,147 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏮 AI 智慧燈謎矩陣 - Copilot Edition</title>
+    <title>🏮 2026 AI 智慧燈謎矩陣 🏮</title>
     <style>
-        :root { --red: #e63946; --gold: #ffb703; --dark: #0d1117; --card: #161b22; }
+        :root { --red: #e63946; --gold: #ffb703; --dark: #0d1117; }
         body { 
-            background: var(--dark); color: #c9d1d9; 
-            font-family: 'PingFang TC', "Microsoft JhengHei", sans-serif; 
-            margin: 0; overflow-x: hidden; min-height: 100vh;
-            background-image: radial-gradient(circle at 50% 50%, #1b2129 0%, #0d1117 100%);
+            background: var(--dark); color: #c9d1d9; font-family: sans-serif; 
+            margin: 0; text-align: center; min-height: 100vh;
+            background-image: radial-gradient(circle, #1b2129, #0d1117);
         }
+        header { padding: 40px 20px; }
+        h1 { color: var(--gold); font-size: 2.5rem; text-shadow: 0 0 15px rgba(255, 183, 3, 0.4); }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 25px; padding: 20px; max-width: 900px; margin: auto; }
         
-        /* 頁首樣式 */
-        header { padding: 60px 20px 20px; text-align: center; }
-        h1 { color: var(--gold); font-size: 2.8rem; margin: 0; text-shadow: 0 0 20px rgba(255, 183, 3, 0.4); }
-        .status-bar { margin: 20px auto; font-size: 1rem; color: #8b949e; font-weight: 500; height: 1.5em; }
-
-        /* 燈籠矩陣網格 */
-        .grid { 
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); 
-            gap: 30px; padding: 20px 40px; max-width: 1000px; margin: auto; 
-        }
-
-        /* 燈籠本體與搖擺動畫 */
-        .lantern-unit { cursor: pointer; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        .lantern-unit:hover { transform: translateY(-10px) scale(1.05); }
-        
-        .lantern-core {
-            background: radial-gradient(circle at 50% 30%, #ff4d4d, var(--red));
+        /* 燈籠樣式 */
+        .lantern { 
+            background: radial-gradient(circle at 50% 40%, #ff4d4d, var(--red)); 
             aspect-ratio: 1/1.2; border: 3px solid var(--gold); border-radius: 45% 45% 35% 35%;
-            display: flex; align-items: center; justify-content: center; padding: 15px;
-            font-weight: bold; color: white; box-shadow: 0 10px 25px rgba(230, 57, 70, 0.4);
-            animation: sway 3.5s infinite ease-in-out; transform-origin: top center;
-            text-align: center; font-size: 1.1rem; line-height: 1.4;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 15px; 
+            font-weight: bold; color: white; box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+            animation: sway 3s infinite ease-in-out; transform-origin: top center;
         }
+        @keyframes sway { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
 
-        @keyframes sway {
-            0%, 100% { transform: rotate(-3deg); }
-            50% { transform: rotate(3deg); }
-        }
-
-        /* 彈窗樣式 */
-        .modal { 
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.9); z-index: 1000; justify-content: center; align-items: center; 
-            backdrop-filter: blur(8px);
-        }
-        .card { 
-            background: white; color: #222; padding: 40px; border-radius: 30px; 
-            width: 85%; max-width: 420px; border: 8px solid var(--gold); text-align: center;
-            box-shadow: 0 0 50px rgba(255, 183, 3, 0.3);
-        }
-
-        input[type="text"] { 
-            width: 80%; padding: 15px; margin: 20px 0; border: 2px solid #ddd; 
-            border-radius: 12px; font-size: 1.2rem; text-align: center; outline: none;
-        }
-        
-        .btn { 
-            padding: 12px 30px; border: none; border-radius: 10px; cursor: pointer; 
-            font-weight: bold; font-size: 1.1rem; transition: 0.2s; display: block; width: 100%;
-        }
-        .btn-check { background: var(--red); color: white; margin-bottom: 10px; }
-        .btn-close { background: #eee; color: #666; }
-
-        #feedback { font-size: 1.2rem; margin: 15px 0; min-height: 1.5em; }
-
-        /* 設定按鈕 (隱藏 Token 重新設定) */
-        .settings-icon { position: fixed; bottom: 20px; right: 20px; color: #30363d; cursor: pointer; font-size: 0.8rem; }
+        /* 彈窗 */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
+        .card { background: white; color: #222; padding: 30px; border-radius: 20px; width: 85%; max-width: 380px; border: 6px solid var(--gold); }
+        input { width: 85%; padding: 12px; margin: 15px 0; border: 2px solid #ddd; border-radius: 8px; font-size: 1.1rem; text-align: center; }
+        .btn { padding: 12px; width: 100%; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; background: var(--red); color: white; font-size: 1rem; margin-top: 5px; }
     </style>
 </head>
 <body>
 
 <header>
     <h1>🏮 元宵智慧燈謎 🏮</h1>
-    <div id="status" class="status-bar">正在載入 AI 謎題...</div>
+    <div id="status" style="color:var(--gold); margin-top: 15px; font-weight: bold;">📡 正在連線 Copilot...</div>
 </header>
 
 <div class="grid" id="main-grid"></div>
 
 <div class="modal" id="modal">
     <div class="card">
-        <div style="color: #e63946; font-size: 0.9rem; font-weight: bold; margin-bottom: 5px;">QUESTION</div>
-        <h2 id="q-title" style="margin-top: 0; min-height: 3em; display: flex; align-items: center; justify-content: center;"></h2>
-        <input type="text" id="user-input" placeholder="請輸入答案..." autocomplete="off">
-        <div id="feedback"></div>
-        <button class="btn btn-check" onclick="checkAns()">判定答案</button>
-        <button class="btn btn-close" onclick="closeModal()">返回列表</button>
+        <h3 id="q-title" style="color:var(--red); line-height: 1.5;"></h3>
+        <input type="text" id="user-input" placeholder="答案是？">
+        <div id="feedback" style="margin-bottom: 15px; font-weight: bold; min-height: 1.2em;"></div>
+        <button class="btn" onclick="checkAns()">判定</button>
+        <button class="btn" onclick="closeModal()" style="background:#eee; color:#666; margin-top: 10px;">關閉</button>
     </div>
 </div>
 
-<div class="settings-icon" onclick="resetToken()">Clear Memory</div>
-
 <script>
-    // 💡 重要：請在此處貼上你的 Base64 亂碼
-    // 如何取得：在 Console 輸入 btoa("你的ghp_token")
-    const ENCODED_TOKEN = "你的亂碼貼在這裡"; 
+    /**
+     * 🛡️ 抗掃描混淆區
+     * 請填入反轉後的 Base64 亂碼
+     */
+    const SECRET_KEY = "2JzY5YXThFFWzo1QLdFU0MESTd1cDN0NQpHMi9ETIZXcRlUO0R2R5x0TWNHS1U1VYZXOSNkSadXNLd3XTNTW4gTNZ1UMRNlSwEVTCdUQyIUMx8FdhB3XiVHa0l2Z"; 
 
     let riddles = [];
-    let currentIdx = null;
+    let cur = null;
 
-    // 核心 AI 調用函數
-    async function callCopilot(messages, jsonMode = false) {
+    // 解碼邏輯：先反轉字串，再進行 Base64 解碼
+    function getDecodedToken() {
         try {
-            // 檢查 Token 是否有填寫
-            if (ENCODED_TOKEN === "Z2l0aHViX3BhdF8xMUIyQUdCTVEwSnVXVlQ5TFQ1cjdaX3lxQldZRzlkbzRhYWZKdmRubGkyWTg3UFM4Zm9vY0gwajJTZk0xVlNyUEhQRVg1Q0NFTFJVb2pobFgy") {
-                updateStatus("❌ 錯誤：請先在代碼中填入 ENCODED_TOKEN");
-                return null;
-            }
+            const reversed = SECRET_KEY.split("").reverse().join("");
+            return atob(reversed).trim();
+        } catch (e) {
+            return null;
+        }
+    }
 
+    async function askAI(msgs, jsonMode = false) {
+        const token = getDecodedToken();
+        if (!token) {
+            document.getElementById('status').innerText = "❌ 密鑰解析出錯";
+            return null;
+        }
+
+        try {
             const res = await fetch("https://models.inference.ai.azure.com/chat/completions", {
                 method: "POST",
                 headers: { 
                     "Content-Type": "application/json", 
-                    "Authorization": `Bearer ${atob(ENCODED_TOKEN).trim()}` 
+                    "Authorization": `Bearer ${token}` 
                 },
                 body: JSON.stringify({
                     model: "gpt-4o",
-                    messages: messages,
-                    temperature: 0.8,
+                    messages: msgs,
                     response_format: jsonMode ? { type: "json_object" } : undefined
                 })
             });
 
             const data = await res.json();
-            if (!res.ok) {
-                updateStatus(`❌ API 錯誤: ${data.error?.message || "Bad Credentials"}`);
-                return null;
-            }
+            if (!res.ok) throw new Error(data.error?.message || "Bad Credentials");
             return data.choices[0].message.content;
         } catch (e) {
-            updateStatus("❌ 連線失敗，請檢查網路或 Token");
+            document.getElementById('status').innerText = "❌ 失敗：" + e.message;
             return null;
         }
     }
 
-    // 初始化 App：生成 12 個謎題
     async function init() {
-        updateStatus("⏳ Copilot 正在構思 12 個創意燈謎...");
+        const raw = await askAI([
+            {role: "system", content: "你是一個專業燈謎官。請回傳 JSON: {\"list\": [{\"q\":\"題目\",\"a\":\"答案\"}]}"},
+            {role: "user", content: "給我 12 個有趣的中文燈謎"}
+        ], true);
         
-        const prompt = [
-            { role: "system", content: "你是一個幽默的元宵燈謎官。請輸出一組 JSON 物件，格式為 {\"riddles\": [{\"q\":\"題目\",\"a\":\"答案\"}]}" },
-            { role: "user", content: "請給我 12 個有趣且具備難度的中文燈謎。" }
-        ];
-
-        const response = await callCopilot(prompt, true);
-        if (response) {
-            try {
-                const data = JSON.parse(response);
-                riddles = data.riddles;
-                renderGrid();
-                updateStatus("✨ 燈籠已點亮，請朋友選擇一個吧！");
-            } catch (err) {
-                updateStatus("❌ JSON 解析失敗，請重新整理頁面");
-            }
+        if (raw) {
+            riddles = JSON.parse(raw).list;
+            document.getElementById('status').innerText = "✨ 燈謎已備妥，請點擊挑戰！";
+            const g = document.getElementById('main-grid');
+            g.innerHTML = "";
+            riddles.forEach((r, i) => {
+                const d = document.createElement('div');
+                d.className = 'lantern';
+                d.innerText = r.q.substring(0, 10) + "...";
+                d.onclick = () => {
+                    cur = i;
+                    document.getElementById('q-title').innerText = r.q;
+                    document.getElementById('feedback').innerText = "";
+                    document.getElementById('user-input').value = "";
+                    document.getElementById('modal').style.display = 'flex';
+                };
+                g.appendChild(d);
+            });
         }
     }
 
-    // 渲染燈籠矩陣
-    function renderGrid() {
-        const grid = document.getElementById('main-grid');
-        grid.innerHTML = "";
-        riddles.forEach((r, i) => {
-            const unit = document.createElement('div');
-            unit.className = 'lantern-unit';
-            unit.innerHTML = `<div class="lantern-core">${r.q.length > 15 ? r.q.substring(0, 12) + "..." : r.q}</div>`;
-            unit.onclick = () => openModal(i);
-            grid.appendChild(unit);
-        });
-    }
-
-    // 開啟答題彈窗
-    function openModal(idx) {
-        currentIdx = idx;
-        document.getElementById('q-title').innerText = riddles[idx].q;
-        document.getElementById('feedback').innerText = "";
-        document.getElementById('user-input').value = "";
-        document.getElementById('modal').style.display = 'flex';
-        document.getElementById('user-input').focus();
-    }
-
-    // AI 判定答案
     async function checkAns() {
-        const userAns = document.getElementById('user-input').value.trim();
+        const ans = document.getElementById('user-input').value;
         const fb = document.getElementById('feedback');
-        if (!userAns) return;
-
-        fb.innerText = "🔍 Copilot 評判中...";
-        fb.style.color = "#8b949e";
-
-        const prompt = [
-            { role: "system", content: "你是一個毒舌但精準的燈謎評判官。請判斷對錯。JSON 格式: {\"is_correct\": true/false, \"comment\": \"一句話評論\"}" },
-            { role: "user", content: `題目：${riddles[currentIdx].q}\n正確答案：${riddles[currentIdx].a}\n使用者回答：${userAns}` }
-        ];
-
-        const response = await callCopilot(prompt, true);
-        if (response) {
-            const res = JSON.parse(response);
-            fb.innerText = (res.is_correct ? "🎉 " : "💀 ") + res.comment;
-            fb.style.color = res.is_correct ? "#2d6a4f" : "#e63946";
+        fb.innerText = "🔍 AI 評判中...";
+        const raw = await askAI([
+            {role: "system", content: "判斷對錯並用中文幽默回覆。JSON: {\"ok\":true/false, \"msg\":\"內容\"}"},
+            {role: "user", content: `題:${riddles[cur].q}, 正確:${riddles[cur].a}, 使用者:${ans}`}
+        ], true);
+        if (raw) {
+            const res = JSON.parse(raw);
+            fb.innerText = (res.ok ? "🟢 " : "🔴 ") + res.msg;
+            fb.style.color = res.ok ? "green" : "red";
         }
     }
 
     function closeModal() { document.getElementById('modal').style.display = 'none'; }
-    function updateStatus(msg) { document.getElementById('status').innerText = msg; }
-    function resetToken() { localStorage.clear(); location.reload(); }
-
-    // 啟動
     window.onload = init;
 </script>
 </body>

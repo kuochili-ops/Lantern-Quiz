@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏮 AI 智慧燈謎矩陣 - 2026 穩定版</title>
+    <title>🏮 AI 智慧燈謎矩陣 - 2026 最終修正版</title>
     <style>
         :root { --red: #d32f2f; --gold: #ffd700; --dark: #0a0a0a; }
         body { background: var(--dark); color: #fff; font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif; margin: 0; text-align: center; overflow-x: hidden; }
@@ -11,7 +11,6 @@
         header { padding: 30px 10px; }
         .status-msg { font-size: 0.9rem; color: var(--gold); margin-bottom: 10px; min-height: 1.2em; text-shadow: 0 0 5px rgba(255, 215, 0, 0.5); }
 
-        /* 4x3 矩陣佈局 */
         .grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -45,7 +44,6 @@
         .lantern:hover { transform: scale(1.08) translateY(-5px); box-shadow: 0 0 25px var(--gold); z-index: 2; }
         .lantern::after { content: "🏮"; position: absolute; bottom: -12px; font-size: 1.2rem; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5)); }
 
-        /* 互動視窗 (Modal) */
         .modal {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.92); z-index: 1000; justify-content: center; align-items: center;
@@ -100,6 +98,9 @@
     let riddles = []; 
     let currentIdx = null;
 
+    // 通用的 API 呼叫網址
+    const MODEL_PATH = "v1beta/models/gemini-1.5-flash-latest";
+
     function getApiKey() {
         const inputKey = document.getElementById('api-key').value.trim();
         return (SECRET_KEY && !SECRET_KEY.startsWith("__")) ? SECRET_KEY : inputKey;
@@ -108,26 +109,17 @@
     async function initApp() {
         const status = document.getElementById('status');
         const key = getApiKey();
-        
-        if(!key) {
-            status.innerText = "⚠️ 請輸入 API Key 以利 AI 生成 4x3 謎題";
-            return;
-        }
+        if(!key) { status.innerText = "⚠️ 請輸入 API Key"; return; }
 
-        status.innerText = "⏳ AI 正在為您構思 12 個精選燈謎 (使用 V1 API)...";
-
-        const prompt = `你是一個專業的燈謎出題官。請隨機生成 12 個中文燈謎。
-        請嚴格回傳一個 JSON 陣列，不要有任何解釋文字或 Markdown 代碼塊。
-        格式範例：[{"q": "題目", "a": "答案", "h": "提示"}]`;
+        status.innerText = "⏳ AI 正在構思題目...";
+        const prompt = "你是一個專業的燈謎出題官。請隨機生成 12 個中文燈謎。請嚴格回傳一個 JSON 陣列，不包含任何 Markdown 代碼塊或說明文字。格式：[{\"q\": \"題目\", \"a\": \"答案\", \"h\": \"提示\"}]";
 
         try {
-            // 使用 v1 路徑與 1.5-flash 模型
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${key}`, {
+            const response = await fetch(`https://generativelanguage.googleapis.com/${MODEL_PATH}:generateContent?key=${key}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
             });
-            
             const data = await response.json();
             if (data.error) throw new Error(data.error.message);
 
@@ -135,11 +127,10 @@
             text = text.replace(/```json/g, "").replace(/```/g, "").trim();
             riddles = JSON.parse(text); 
             
-            status.innerText = "✨ AI 題目準備就緒！請選擇一個燈籠。";
+            status.innerText = "✨ AI 題目準備就緒！";
             renderGrid();
         } catch (e) {
             status.innerText = "❌ 錯誤: " + e.message;
-            console.error("Init Error:", e);
         }
     }
 
@@ -159,7 +150,7 @@
         currentIdx = i;
         const r = riddles[i];
         document.getElementById('modal-q').innerText = r.q;
-        document.getElementById('modal-hint').innerText = "類別：" + r.h;
+        document.getElementById('modal-hint').innerText = "提示：" + r.h;
         document.getElementById('ai-feedback').innerText = "";
         document.getElementById('ans-input').value = "";
         document.getElementById('fail-options').style.display = 'none';
@@ -178,7 +169,7 @@
         const prompt = `燈謎題目：「${riddles[currentIdx].q}」，正確答案：「${riddles[currentIdx].a}」。使用者回答：「${userAns}」。請判斷是否正確。如果答對了，回傳「CORRECT」加上一段稱讚；如果錯了，回傳一句幽默的否定。`;
 
         try {
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${key}`, {
+            const res = await fetch(`https://generativelanguage.googleapis.com/${MODEL_PATH}:generateContent?key=${key}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
@@ -193,16 +184,16 @@
                 feedback.innerHTML = `<span style="color:var(--red)">😅 ${result}</span>`;
                 document.getElementById('fail-options').style.display = 'flex';
             }
-        } catch (e) { feedback.innerText = "判定時發生連線問題。"; }
+        } catch (e) { feedback.innerText = "判定時發生問題。"; }
     }
 
     async function askAiForMoreHint() {
         const feedback = document.getElementById('ai-feedback');
         const key = getApiKey();
-        feedback.innerText = "💡 AI 思考新線索...";
-        const prompt = `針對燈謎「${riddles[currentIdx].q}」，謎底是「${riddles[currentIdx].a}」。請提供一個更具體但不可直接說出答案的提示。`;
+        feedback.innerText = "💡 AI 思考線索...";
+        const prompt = `針對燈謎「${riddles[currentIdx].q}」，謎底是「${riddles[currentIdx].a}」。請提供一個隱晦的提示。`;
         try {
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${key}`, {
+            const res = await fetch(`https://generativelanguage.googleapis.com/${MODEL_PATH}:generateContent?key=${key}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })

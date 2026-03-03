@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏮 AI 智慧燈謎矩陣 🏮</title>
+    <title>🏮 AI 智慧燈謎 - 最終修正 🏮</title>
     <style>
         :root { --red: #d32f2f; --gold: #ffd700; --dark: #0a0a0a; }
         body { background: var(--dark); color: #fff; font-family: sans-serif; margin: 0; text-align: center; }
         header { padding: 30px 10px; }
-        .status-msg { font-size: 0.9rem; color: var(--gold); margin-bottom: 10px; min-height: 1.2em; }
-        .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; padding: 10px; max-width: 800px; margin: auto; }
+        .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 10px; max-width: 800px; margin: auto; }
         .lantern {
             background: radial-gradient(circle, #ff4d4d, var(--red)); aspect-ratio: 1/1.2;
             border: 2px solid var(--gold); border-radius: 50% 50% 45% 45%; cursor: pointer;
@@ -17,30 +16,25 @@
             font-size: 0.9rem; font-weight: bold; transition: 0.3s; color: white;
             box-shadow: 0 5px 15px rgba(255,0,0,0.3);
         }
-        .lantern:hover { transform: scale(1.1); box-shadow: 0 0 20px var(--gold); }
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; justify-content: center; align-items: center; }
         .card { background: white; color: #333; padding: 30px; border-radius: 20px; width: 85%; max-width: 400px; border: 5px solid var(--gold); }
         input { width: 80%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; }
-        button { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin: 5px; }
-        #fireworks { position: fixed; top: 0; left: 0; pointer-events: none; z-index: 2000; }
     </style>
 </head>
 <body>
-<canvas id="fireworks"></canvas>
 <header>
     <h1 style="color:var(--gold);">🏮 AI 智慧燈謎 🏮</h1>
-    <div id="status" class="status-msg">請貼入 API Key 後按 Enter</div>
-    <input type="password" id="api-key" placeholder="貼入 API Key" style="width:200px; background:#222; color:#eee; border:1px solid #444;">
+    <div id="status">請輸入 API Key 並按 Enter</div>
+    <input type="password" id="api-key" placeholder="貼入 API Key">
 </header>
 <div class="grid" id="lantern-grid"></div>
 <div class="modal" id="modal">
     <div class="card">
         <h2 id="modal-q">題目</h2>
-        <p id="modal-hint" style="color:var(--red)"></p>
-        <input type="text" id="ans-input" placeholder="答案是...">
+        <input type="text" id="ans-input" placeholder="輸入答案...">
         <div id="ai-feedback" style="margin: 10px 0; font-weight: bold;"></div>
-        <button style="background:var(--red); color:white;" onclick="verifyAnswer()">判定</button>
-        <button style="background:#666; color:white;" onclick="closeModal()">關閉</button>
+        <button onclick="verifyAnswer()">判定</button>
+        <button onclick="closeModal()">關閉</button>
     </div>
 </div>
 
@@ -49,51 +43,56 @@
     let riddles = [];
     let currentIdx = null;
 
-    // 💡 嘗試使用最基礎的 v1beta 路徑
-    const API_BASE = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+    // 💡 定義多個可能的模型名稱進行嘗試
+    const MODELS = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash"];
 
     function getApiKey() {
         const inputKey = document.getElementById('api-key').value.trim();
         return (SECRET_KEY && !SECRET_KEY.startsWith("__")) ? SECRET_KEY : inputKey;
     }
 
+    // 核心 API 呼叫函數
     async function callAI(prompt) {
         const key = getApiKey();
         if(!key) return null;
-        try {
-            const resp = await fetch(`${API_BASE}?key=${key}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt }] }],
-                    generationConfig: { temperature: 0.7, maxOutputTokens: 800 }
-                })
-            });
-            if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
-            const data = await resp.json();
-            return data.candidates[0].content.parts[0].text;
-        } catch (e) {
-            console.error(e);
-            return null;
+
+        // 嘗試不同的模型路徑，直到成功為止
+        for (let model of MODELS) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+            try {
+                const resp = await fetch(url, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    return data.candidates[0].content.parts[0].text;
+                }
+                console.warn(`嘗試模型 ${model} 失敗: ${resp.status}`);
+            } catch (e) {
+                console.error(`連線模型 ${model} 出錯`, e);
+            }
         }
+        return null;
     }
 
     async function initApp() {
         const status = document.getElementById('status');
-        status.innerText = "⏳ AI 正在思考 12 個燈謎...";
+        status.innerText = "⏳ AI 正在連線中...";
         
-        const prompt = "請生成12個中文燈謎，以JSON格式回傳：[{\"q\":\"題目\",\"a\":\"答案\",\"h\":\"提示\"}]。不要解釋文字。";
+        const prompt = "請生成12個中文燈謎，以 JSON 陣列回傳，不要 Markdown 標籤：[{\"q\":\"題目\",\"a\":\"答案\",\"h\":\"提示\"}]";
         const result = await callAI(prompt);
         
         if(result) {
             try {
                 const cleanJson = result.replace(/```json|```/g, "").trim();
                 riddles = JSON.parse(cleanJson);
-                status.innerText = "✨ 準備就緒！";
+                status.innerText = "✨ 題目載入成功！";
                 renderGrid();
-            } catch(e) { status.innerText = "❌ JSON 解析失敗，請再試一次"; }
+            } catch(e) { status.innerText = "❌ 解析錯誤，請重新整理"; }
         } else {
-            status.innerText = "❌ 404 或 API 錯誤，請確認 Key 是否有效且支援 Gemini 1.5 Flash";
+            status.innerText = "❌ 所有模型均 404，請檢查 API Key 是否有效。";
         }
     }
 
@@ -107,7 +106,6 @@
             div.onclick = () => {
                 currentIdx = i;
                 document.getElementById('modal-q').innerText = r.q;
-                document.getElementById('modal-hint').innerText = "提示：" + r.h;
                 document.getElementById('ai-feedback').innerText = "";
                 document.getElementById('modal').style.display = 'flex';
             };
@@ -118,32 +116,13 @@
     async function verifyAnswer() {
         const userAns = document.getElementById('ans-input').value;
         const feedback = document.getElementById('ai-feedback');
-        feedback.innerText = "AI 評判中...";
-        const prompt = `題目：${riddles[currentIdx].q}，答案：${riddles[currentIdx].a}。回答：${userAns}。請回傳：對了就說CORRECT，錯了就幽默吐槽。`;
+        feedback.innerText = "AI 判定中...";
+        const prompt = `題目：${riddles[currentIdx].q}，答案：${riddles[currentIdx].a}。使用者答：${userAns}。請回傳：對了就說CORRECT加稱讚，錯了就幽默吐槽。`;
         const result = await callAI(prompt);
-        if(result && result.includes("CORRECT")) {
-            feedback.innerText = "🥳 " + result.replace("CORRECT", "");
-            launchFireworks();
-        } else {
-            feedback.innerText = "😅 " + (result || "再接再厲！");
-        }
+        feedback.innerText = result ? result.replace("CORRECT", "🥳") : "😅 再想想！";
     }
 
     function closeModal() { document.getElementById('modal').style.display = 'none'; }
-
-    function launchFireworks() {
-        const cvs = document.getElementById('fireworks');
-        const ctx = cvs.getContext('2d');
-        cvs.width = window.innerWidth; cvs.height = window.innerHeight;
-        let p = [];
-        for(let i=0; i<50; i++) p.push({ x: cvs.width/2, y: cvs.height/2, vx: (Math.random()-0.5)*10, vy: (Math.random()-0.5)*10, l: 50 });
-        function draw() {
-            ctx.clearRect(0,0,cvs.width,cvs.height);
-            p.forEach(i => { i.x+=i.vx; i.y+=i.vy; i.l--; ctx.fillStyle="gold"; ctx.fillRect(i.x,i.y,3,3); });
-            if(p[0].l > 0) requestAnimationFrame(draw);
-        }
-        draw();
-    }
 
     document.getElementById('api-key').addEventListener('keypress', e => { if(e.key === 'Enter') initApp(); });
     window.onload = () => { if(getApiKey()) initApp(); };

@@ -1,7 +1,11 @@
-name: Deploy Lantern App
+name: Deploy Lantern Quiz
 on:
   push:
-    branches: [ main ]
+    branches: [ main ] # 當你 push 到 main 分支時觸發
+
+permissions:
+  contents: write # 賦予機器人寫入權限，解決 403 錯誤
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -11,11 +15,11 @@ jobs:
 
       - name: Inject API Key
         run: |
-          # 使用 sed 把 HTML 裡的佔位符換成你 Secret 裡的 LANTERN
+          # 這行會把 index.html 裡的佔位符替換成你設定的 Secret LANTERN
           sed -i "s/__GEMINI_API_KEY__/${{ secrets.LANTERN }}/g" index.html
 
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          folder: . # 部署目前資料夾
-          branch: gh-pages
+          folder: .        # 部署根目錄下的所有檔案
+          branch: gh-pages # 部署到 gh-pages 分支

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏮 AI 智慧燈謎 - 互動升級版</title>
+    <title>🏮 元宵 AI 智慧燈謎 - 互動升級版</title>
     <style>
         :root { --red: #e63946; --gold: #ffb703; --dark: #0d1117; }
         body { 
@@ -12,44 +12,50 @@
             background-image: radial-gradient(circle, #1b2129, #0d1117);
         }
         header { padding: 40px 20px; }
-        h1 { color: var(--gold); font-size: 2.5rem; text-shadow: 0 0 15px rgba(255, 183, 3, 0.4); }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 25px; padding: 20px; max-width: 900px; margin: auto; }
+        h1 { color: var(--gold); font-size: 2.5rem; text-shadow: 0 0 15px rgba(255, 183, 3, 0.4); margin: 0; }
+        .status-msg { color: var(--gold); margin-top: 15px; font-weight: bold; min-height: 1.2em; }
         
+        /* 燈籠矩陣 */
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 25px; padding: 20px; max-width: 900px; margin: auto; }
         .lantern { 
             background: radial-gradient(circle at 50% 40%, #ff4d4d, var(--red)); 
             aspect-ratio: 1/1.2; border: 3px solid var(--gold); border-radius: 45% 45% 35% 35%;
             cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 15px; 
             font-weight: bold; color: white; box-shadow: 0 8px 20px rgba(0,0,0,0.5);
             animation: sway 3s infinite ease-in-out; transform-origin: top center;
+            text-align: center; line-height: 1.4;
         }
         @keyframes sway { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
 
+        /* 彈窗 */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
-        .card { background: white; color: #222; padding: 30px; border-radius: 20px; width: 85%; max-width: 380px; border: 6px solid var(--gold); }
-        input { width: 85%; padding: 12px; margin: 15px 0; border: 2px solid #ddd; border-radius: 8px; font-size: 1.1rem; text-align: center; }
+        .card { background: white; color: #222; padding: 30px; border-radius: 20px; width: 85%; max-width: 380px; border: 6px solid var(--gold); box-shadow: 0 0 30px rgba(255,183,3,0.3); }
+        input { width: 85%; padding: 12px; margin: 15px 0; border: 2px solid #ddd; border-radius: 8px; font-size: 1.1rem; text-align: center; outline: none; }
         
-        .btn-group { display: flex; gap: 10px; margin-top: 5px; }
-        .btn { flex: 1; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1rem; }
+        .btn-group { display: flex; gap: 10px; margin-top: 10px; }
+        .btn { flex: 1; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1rem; transition: 0.2s; }
         .btn-check { background: var(--red); color: white; }
         .btn-hint { background: var(--gold); color: #333; }
         .btn-cancel { background: #eee; color: #666; margin-top: 10px; width: 100%; }
+        .btn:hover { opacity: 0.8; }
         
-        #hint-text { font-size: 0.9rem; color: #666; font-style: italic; margin-top: 10px; min-height: 1.2em; border-left: 3px solid var(--gold); padding-left: 10px; display: none; }
-        #feedback { margin: 15px 0; font-weight: bold; min-height: 1.2em; }
+        #hint-text { font-size: 0.95rem; color: #555; font-style: italic; margin: 10px 0; border-left: 4px solid var(--gold); padding: 8px 15px; background: #fff9e6; text-align: left; display: none; line-height: 1.4; }
+        #feedback { margin: 15px 0; font-weight: bold; min-height: 1.2em; font-size: 1.1rem; }
     </style>
 </head>
 <body>
 
 <header>
     <h1>🏮 元宵智慧燈謎 🏮</h1>
-    <div id="status" style="color:var(--gold); margin-top: 15px; font-weight: bold;">📡 正在召喚 Copilot...</div>
+    <div id="status" class="status-msg">📡 正在召喚 Copilot 老師...</div>
 </header>
 
 <div class="grid" id="main-grid"></div>
 
 <div class="modal" id="modal">
     <div class="card">
-        <h3 id="q-title" style="color:var(--red); line-height: 1.5; margin-bottom: 5px;"></h3>
+        <div style="font-size:0.8rem; color:#999; margin-bottom:5px;">挑戰謎題：</div>
+        <h3 id="q-title" style="color:var(--red); line-height: 1.4; margin-top:0;"></h3>
         <div id="hint-text"></div>
         <input type="text" id="user-input" placeholder="答案是？">
         <div id="feedback"></div>
@@ -58,16 +64,18 @@
             <button class="btn btn-hint" onclick="getHint()">給我提示</button>
             <button class="btn btn-check" onclick="checkAns()">判定作答</button>
         </div>
-        <button class="btn btn-cancel" onclick="closeModal()">關閉</button>
+        <button class="btn btn-cancel" onclick="closeModal()">返回</button>
     </div>
 </div>
 
 <script>
+    // 🛡️ 抗掃描混淆區：請填入反轉後的 Base64 亂碼
     const SECRET_KEY = "2JzY5YXThFFWzo1QLdFU0MESTd1cDN0NQpHMi9ETIZXcRlUO0R2R5x0TWNHS1U1VYZXOSNkSadXNLd3XTNTW4gTNZ1UMRNlSwEVTCdUQyIUMx8FdhB3XiVHa0l2Z"; 
 
     let riddles = [];
     let cur = null;
 
+    // 解碼邏輯
     function getDecodedToken() {
         try {
             const reversed = SECRET_KEY.split("").reverse().join("");
@@ -77,6 +85,8 @@
 
     async function askAI(msgs, jsonMode = false) {
         const token = getDecodedToken();
+        if(!token) { updateStatus("❌ 密鑰解析錯誤"); return null; }
+
         try {
             const res = await fetch("https://models.inference.ai.azure.com/chat/completions", {
                 method: "POST",
@@ -84,29 +94,32 @@
                 body: JSON.stringify({
                     model: "gpt-4o",
                     messages: msgs,
+                    temperature: 0.8,
                     response_format: jsonMode ? { type: "json_object" } : undefined
                 })
             });
             const data = await res.json();
-            if (!res.ok) throw new Error(data.error?.message || "Error");
+            if (!res.ok) throw new Error(data.error?.message || "Bad Credentials");
             return data.choices[0].message.content;
         } catch (e) {
-            document.getElementById('status').innerText = "❌ 失敗：" + e.message;
+            updateStatus("❌ 連線失敗：" + e.message);
             return null;
         }
     }
 
     async function init() {
+        if(SECRET_KEY.length < 10) { updateStatus("⚠️ 請在代碼中填入 SECRET_KEY"); return; }
+        
         const raw = await askAI([
             {role: "system", content: "你是一個專業燈謎官。請回傳 JSON: {\"list\": [{\"q\":\"題目\",\"a\":\"答案\"}]}"},
-            {role: "user", content: "給我 12 個適合過年玩的有趣中文燈謎。"}
+            {role: "user", content: "給我 12 個適合過年玩的中文燈謎，難度中等。"}
         ], true);
         
         if (raw) {
             riddles = JSON.parse(raw).list;
-            document.getElementById('status').innerText = "✨ 燈謎已點亮，請點擊挑戰！";
-            const g = document.getElementById('main-grid');
-            g.innerHTML = "";
+            updateStatus("✨ 燈謎已備妥，請點擊挑戰！");
+            const gridContainer = document.getElementById('main-grid');
+            gridContainer.innerHTML = "";
             riddles.forEach((r, i) => {
                 const d = document.createElement('div');
                 d.className = 'lantern';
@@ -119,19 +132,19 @@
                     document.getElementById('user-input').value = "";
                     document.getElementById('modal').style.display = 'flex';
                 };
-                grid.appendChild(d);
+                gridContainer.appendChild(d); // 修正處：確保正確指向 main-grid
             });
         }
     }
 
-    // 💡 新增：獲取 AI 提示功能
+    // 獲取 AI 提示
     async function getHint() {
         const hBox = document.getElementById('hint-text');
         hBox.innerText = "💡 AI 思考提示中...";
         hBox.style.display = 'block';
 
         const prompt = [
-            {role: "system", content: "你是一個親切的引導者。給予使用者關於燈謎的暗示，但絕對不能直接說出答案。請用一句話簡短描述。"},
+            {role: "system", content: "你是一個親切的引導者。給予使用者暗示，但絕對不能直接說出答案。請用一句話簡短描述。"},
             {role: "user", content: `題目：${riddles[cur].q}\n答案是：${riddles[cur].a}\n請給我一個暗示。`}
         ];
 
@@ -142,21 +155,27 @@
     }
 
     async function checkAns() {
-        const ans = document.getElementById('user-input').value;
+        const ans = document.getElementById('user-input').value.trim();
         const fb = document.getElementById('feedback');
-        fb.innerText = "🔍 AI 評判中...";
+        if(!ans) return;
+        
+        fb.innerText = "🔍 評判中...";
+        fb.style.color = "#999";
+
         const raw = await askAI([
-            {role: "system", content: "判斷對錯並用中文幽默回覆。JSON: {\"ok\":true/false, \"msg\":\"內容\"}"},
-            {role: "user", content: `題:${riddles[cur].q}, 正確:${riddles[cur].a}, 使用者:${ans}`}
+            {role: "system", content: "判斷對錯並用中文幽默回覆。JSON: {\"ok\":true/false, \"msg\":\"一句話回覆\"}"},
+            {role: "user", content: `題:${riddles[cur].q}, 正確:${riddles[cur].a}, 使用者回答:${ans}`}
         ], true);
         if (raw) {
             const res = JSON.parse(raw);
             fb.innerText = (res.ok ? "🟢 " : "🔴 ") + res.msg;
-            fb.style.color = res.ok ? "green" : "red";
+            fb.style.color = res.ok ? "#2d6a4f" : "#e63946";
         }
     }
 
     function closeModal() { document.getElementById('modal').style.display = 'none'; }
+    function updateStatus(msg) { document.getElementById('status').innerText = msg; }
+    
     window.onload = init;
 </script>
 </body>

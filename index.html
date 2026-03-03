@@ -3,62 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏮 元宵 AI 智慧燈謎 - 點開即玩版</title>
+    <title>🏮 AI 智慧燈謎 - 最終校正版</title>
     <style>
         :root { --red: #e63946; --gold: #ffb703; --dark: #0d1117; }
-        body { 
-            background: var(--dark); background-image: radial-gradient(circle, #1b2129, #0d1117);
-            color: #c9d1d9; font-family: sans-serif; text-align: center; margin: 0; min-height: 100vh;
-        }
-        header { padding: 60px 20px; }
-        h1 { color: var(--gold); font-size: 2.8rem; text-shadow: 0 0 20px rgba(255, 183, 3, 0.4); margin: 0; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 30px; padding: 20px 40px; max-width: 1000px; margin: auto; }
-        .lantern { 
-            background: radial-gradient(circle at 50% 40%, #ff4d4d, var(--red)); 
-            aspect-ratio: 1/1.2; border: 3px solid var(--gold); border-radius: 45% 45% 35% 35%;
-            cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 15px; 
-            font-weight: bold; color: white; box-shadow: 0 10px 20px rgba(230, 57, 70, 0.3);
-            animation: sway 3s infinite ease-in-out; transform-origin: top center;
-        }
-        @keyframes sway { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
-        .card { background: white; color: #222; padding: 40px; border-radius: 25px; width: 85%; max-width: 400px; border: 8px solid var(--gold); }
-        input { width: 85%; padding: 12px; margin: 15px 0; border: 2px solid #ddd; border-radius: 8px; font-size: 1.1rem; text-align: center; }
-        .btn { padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; background: var(--red); color: white; font-size: 1rem; }
+        body { background: var(--dark); color: #c9d1d9; font-family: sans-serif; text-align: center; margin: 0; }
+        header { padding: 50px 20px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 20px; padding: 20px; max-width: 900px; margin: auto; }
+        .lantern { background: #ff4d4d; aspect-ratio: 1/1.2; border: 2px solid var(--gold); border-radius: 40% 40% 30% 30%; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 10px; font-weight: bold; color: white; animation: sway 3s infinite ease-in-out; transform-origin: top center; }
+        @keyframes sway { 0%, 100% { transform: rotate(-2deg); } 50% { transform: rotate(2deg); } }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; justify-content: center; align-items: center; }
+        .card { background: white; color: #222; padding: 30px; border-radius: 20px; width: 80%; max-width: 350px; border: 5px solid var(--gold); }
+        .btn { padding: 10px; width: 100%; background: var(--red); color: white; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <header>
-    <h1>🏮 AI 智慧燈謎 🏮</h1>
-    <div id="status" style="margin-top:20px; color:var(--gold); font-weight: bold;">⏳ 正在連線 GitHub Copilot...</div>
+    <h1 style="color:var(--gold);">🏮 AI 智慧燈謎 🏮</h1>
+    <div id="status" style="margin-top:20px; color:#8b949e;">📡 正在嘗試連線至 GitHub Copilot...</div>
 </header>
 
 <div class="grid" id="main-grid"></div>
 
 <div class="modal" id="modal">
     <div class="card">
-        <h3 id="q-title" style="color:var(--red); line-height: 1.4;"></h3>
-        <input type="text" id="user-input" placeholder="請輸入謎底">
-        <div id="feedback" style="margin: 15px; font-weight: bold; font-size: 1.2rem; min-height: 1.5em;"></div>
-        <button class="btn" onclick="checkAns()">送出判定</button>
-        <button class="btn" onclick="closeModal()" style="background:#eee; color:#666;">關閉</button>
+        <h3 id="q-title"></h3>
+        <input type="text" id="user-input" placeholder="謎底是？" style="width:90%; padding:10px; margin:10px 0; text-align:center;">
+        <div id="feedback" style="margin: 10px; font-weight: bold;"></div>
+        <button class="btn" onclick="checkAns()">送出</button>
+        <button class="btn" onclick="closeModal()" style="background:#ccc; color:#333;">關閉</button>
     </div>
 </div>
 
 <script>
-    // 💡 替換成你的 Base64 Token
-    const ENCODED_TOKEN = "Z2l0aHViX3BhdF8xMUIyQUdCTVEwV2ZGRWdwY1c2SXEwXzZLMEUyTXVRb0UwaWwybDhNNlRZbHVwQXRnRTZrSXVXUlpOcUlFWHBPRGpaRzJJRE9YRGxKbWV1dUNw"; 
+    // 💡 請在此處貼上你在 Console 產生的 Base64 亂碼
+    const ENCODED_TOKEN = "Z2l0aHViX3BhdF8xMUIyQUdCTVEwQ2tZQnJnU0R6bENqX1dWN1JpUTc1dlAyaXhhRURlQnVodDE5RlV4OGpHbWh1OEpwS01qaHgxbTRFUkRNNFhSR0tSWnVLQmVV"; 
+
     let riddles = [];
     let cur = null;
 
     async function askAI(msgs, jsonMode = false) {
+        let rawToken = "";
+        try {
+            rawToken = atob(ENCODED_TOKEN).trim(); // 解碼並去空白
+        } catch (e) {
+            document.getElementById('status').innerText = "❌ Base64 解碼失敗，請重新產生編碼。";
+            return null;
+        }
+
         try {
             const res = await fetch("https://models.inference.ai.azure.com/chat/completions", {
                 method: "POST",
                 headers: { 
                     "Content-Type": "application/json", 
-                    "Authorization": `Bearer ${atob(ENCODED_TOKEN)}` // 自動解碼
+                    "Authorization": `Bearer ${rawToken}` 
                 },
                 body: JSON.stringify({
                     model: "gpt-4o",
@@ -66,29 +64,40 @@
                     response_format: jsonMode ? { type: "json_object" } : undefined
                 })
             });
+
             const data = await res.json();
+            if (!res.ok) {
+                console.error("API 錯誤內容:", data);
+                document.getElementById('status').innerText = `❌ API 拒絕連線: ${data.error?.message || '原因不明'}`;
+                return null;
+            }
             return data.choices[0].message.content;
         } catch (e) {
-            document.getElementById('status').innerText = "❌ 連線失敗，可能 Token 已過期。";
+            document.getElementById('status').innerText = "❌ 網路問題，請檢查是否被防火牆或 CORS 攔截。";
             return null;
         }
     }
 
     async function init() {
+        if(ENCODED_TOKEN === "你的Base64編碼貼在這裡") {
+            document.getElementById('status').innerText = "⚠️ 請在程式碼中填入 ENCODED_TOKEN！";
+            return;
+        }
+
         const raw = await askAI([
             {role: "system", content: "你是一個燈謎官。請回傳 JSON: {\"list\": [{\"q\":\"題目\",\"a\":\"答案\"}]}"},
-            {role: "user", content: "請給我 12 個創意中文燈謎。"}
+            {role: "user", content: "請給我 12 個中文燈謎"}
         ], true);
         
         if (raw) {
             riddles = JSON.parse(raw).list;
-            document.getElementById('status').innerText = "✨ 燈籠已點亮！點擊挑戰。";
+            document.getElementById('status').innerText = "✅ 點亮成功！點擊燈籠挑戰。";
             const g = document.getElementById('main-grid');
             g.innerHTML = "";
             riddles.forEach((r, i) => {
                 const d = document.createElement('div');
                 d.className = 'lantern';
-                d.innerText = r.q.substring(0, 10) + "...";
+                d.innerText = r.q.substring(0, 8) + "...";
                 d.onclick = () => {
                     cur = i;
                     document.getElementById('q-title').innerText = r.q;
@@ -106,7 +115,7 @@
         const fb = document.getElementById('feedback');
         fb.innerText = "🔍 評判中...";
         const raw = await askAI([
-            {role: "system", content: "判斷對錯並用中文幽默回覆。JSON: {\"ok\":true/false, \"msg\":\"內容\"}"},
+            {role: "system", content: "判斷對錯並用中文回覆。JSON: {\"ok\":true/false, \"msg\":\"內容\"}"},
             {role: "user", content: `題:${riddles[cur].q}, 正確:${riddles[cur].a}, 使用者:${ans}`}
         ], true);
         if (raw) {

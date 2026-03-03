@@ -96,16 +96,13 @@
 </div>
 
 <script>
-    // 佔位符，由 GitHub Action 注入
-    const SECRET_KEY = "__GEMINI_API_KEY__"; 
-    let riddles = [];
-    let currentIdx = null;
+// 在 script 標籤最上方
+const SECRET_KEY = "__GEMINI_API_KEY__"; 
 
-    // 取得 API Key
-    function getApiKey() {
-        const inputKey = document.getElementById('api-key').value;
-        return (SECRET_KEY && !SECRET_KEY.startsWith("__")) ? SECRET_KEY : inputKey;
-    }
+async function getApiKey() {
+    // 優先使用被注入的 Key，如果沒被注入（例如本地開啟）則抓取輸入框
+    return (SECRET_KEY && !SECRET_KEY.startsWith("__")) ? SECRET_KEY : document.getElementById('api-key').value;
+}
 
     // 初始化：由 AI 抓取 12 題
     async function initApp() {
